@@ -1,4 +1,4 @@
-const MAP_WIDTH = 80;
+const MAP_WIDTH = 20;
 const MAP_HEIGHT = 20;
 const SIZE_CONST = 3;
 const EDGE_CONST = 2;
@@ -65,18 +65,22 @@ class Game {
                 }
             }
         }
+        // TODO replace mapGrid w graph?
         this._mapGrid = new MapGrid();
-        this._world = new Graph();
-        this._worldSize = this._weirdness * Math.floor(Math.random() * (SIZE_CONST + 1)) + 2;
-        this._worldNumOfEdges = this._weirdness * Math.floor(Math.random() * (EDGE_CONST + 1)) + 2;
+        this._world = new World();
+
+        // _worldSize is approximated to ln(this._weirdness)
+        this._worldSize = 2 + Math.pow(Math.E, Math.random()) * this._weirdness;
+        this._worldNumOfEdges =
+        // this._worldSize = this._weirdness * Math.floor(Math.random() * (SIZE_CONST + 1)) + 2;
+        // this._worldNumOfEdges = this._weirdness * Math.floor(Math.random() * (EDGE_CONST + 1)) + 2;
 
         this._melatoninFound = 0;
         this._totalMelatonin = 0;
-
+        this._numOfItems = 0;
         this._weirdness = 0;
 
         this._door = null;
-
         this._currMap = null;
     }
     _onStart(event) {
@@ -135,16 +139,51 @@ class Game {
             this._currMap = bedroom;
             this._player.changeCoords(9, 2);
             this._totalMelatonin += 1 * Math.ceil(Math.random(0, 1));
-            this._addMelatonin();
+            this._numOfItems += 1 * Math.ceil(Math.random(0, 1));
+            this._populateWorld();
             this._createMap();
         }
     }
+    _populateWorld() {
+        this._addMelatonin();
+        this._addItems();
+        this._addEnemies();
+    }
     _addMelatonin() {
-        this._world.melatonin = [];
-        while (this._world.melatonin.length < this._totalMelatonin) {
+        let melatoninAdded = 0;
+        while (melatoninAdded < this._totalMelatonin) {
             let randomMap = this._world.getRandomVertex();
-            randomMap.addMelatonin(this._world.melatonin);
+            if (randomMap.addItem("m") === true) {
+                melatoninAdded += 1;
+            }
         }
+    }
+    _addItems() {
+        let itemsAdded = 0;
+        while (itemsAdded < this._numOfItems) {
+            let randomMap = this._world.getRandomVertex();
+            if (getRandomNumber(0, 1) === 0) {
+                // generate weapon
+                // let numOfAttributes = Math.floor(this._weirdness * Math.random(0, 1));
+                // for (let i = 0; i < numOfAttributes; i++) {
+                //     weapon.addAttribute();
+                // }
+                if (randomMap.addItem("w") === true) {
+                    itemsAdded += 1
+                }
+            } else {
+                if (randomMap.addItem("a") === true) {
+                    itemsAdded += 1
+                }
+            }
+        }
+    }
+    _generateWeapon() {
+
+
+    }
+    _addEnemies() {
+
     }
     _getMelatonin(x, y) {
         this._melatoninFound += 1;
@@ -213,8 +252,8 @@ class Game {
             });
         } else if (event.code === "ArrowLeft" || event.code === "ArrowRight"
             || event.code === "ArrowUp" || event.code === "ArrowDown") {
-                this._alerts.html("");
-                document.removeEventListener('keydown', this._goToSleep);
+            this._alerts.html("");
+            document.removeEventListener('keydown', this._goToSleep);
         }
     }
     _updateWorldProperties() {
@@ -243,8 +282,8 @@ class Game {
             }
         } else if (event.code === "ArrowLeft" || event.code === "ArrowRight"
             || event.code === "ArrowUp" || event.code === "ArrowDown") {
-                this._alerts.html("");
-                document.removeEventListener('keydown', this._tryOpenDoor);
+            this._alerts.html("");
+            document.removeEventListener('keydown', this._tryOpenDoor);
         }
     }
     _findOppositeDoor() {
@@ -315,6 +354,26 @@ class Player extends Tile {
     }
 }
 
+class Item {
+    constructor(type) {
+        this.type = type;
+    }
+    pickUp() {
+
+    }
+}
+
+class Weapon extends Item {
+    constructor() {
+        super();
+        this.type = "w";
+        this.attribs = [];
+    }
+    addAttribute() {
+
+    }
+}
+
 class Vertex {
     constructor(id) {
         this.id = id;
@@ -338,9 +397,9 @@ class Room extends Vertex {
         }
 
         this.coords = [];
-        this._generateRoom();
+        this.generateRoom();
     }
-    _generateRoom() {
+    generateRoom() {
         this.tiles = {};
         this._generateCorners();
         this._generateWalls();
@@ -490,6 +549,12 @@ class Graph {
     }
 }
 
+class World extends Graph {
+    constructor() {
+        super();
+    }
+}
+
 class Map extends Graph {
     constructor(id) {
         super();
@@ -497,6 +562,7 @@ class Map extends Graph {
         this._height = MAP_HEIGHT;
         this._width = MAP_WIDTH;
         this.html = [];
+        this.items = {};
         this.doors = {};
         this.generateMap();
     }
@@ -556,19 +622,6 @@ class Map extends Graph {
             }
         }
         this._generatePaths();
-
-        // for (let i = 0; i < MAP_WIDTH; i++) {
-        //     let string = "";
-        //     for (let j = 0; j < MAP_HEIGHT; j++) {
-        //         if (this._isInVertices(i, j)) {
-        //             string += "*";
-        //         } else {
-        //             string += ".";
-        //         }
-        //     }
-        //     this.strings.push(string);
-        // }
-        // let test = 0;
     }
     _isInVertices(x, y) {
         for (let key of Object.keys(this.vertices)) {
@@ -582,18 +635,10 @@ class Map extends Graph {
     _generateRooms() {
         let numOfRooms = Math.floor(Math.random() * 5) + 3;
         for (let i = 0; i < numOfRooms; i++) {
-            // X and Y are coords of top left corner
             let room = new Room(i);
-            // if (i === 1) { // for debugging
-            //     let room2 = new Room(i);
-            //     room2.corners.topLeft.x = this.vertices[0].corners.topLeft.x + 1;
-            //     room2.corners.topLeft.y = this.vertices[0].corners.topLeft.y + 1;
-            //     let isALlowed = this._isAllowedLocation(room2);
-            //     let test = 0;
-            // }
             let counter = 0;
             while (this._isAllowedLocation(room) !== true) {
-                room._generateRoom();
+                room.generateRoom();
                 if (counter >= 50) {
                     return;
                 }
@@ -695,37 +740,12 @@ class Map extends Graph {
     _changeY(p1, p2, path) {
         while (p1.y < p2.y) {
             p1.y += 1;
-            // let currPx = this.html[p1.x][p1.y];
-            // if (currPx === "*" || currPx === WHITESPACE) {
-            //     if (charToDraw === ".") {
-            //         charToDraw = "#";
-            //     }
-            // }
-            // if (charToDraw === "#" && currPx === ".") {
-            //     charToDraw = ".";
-            // }
-            // if (currPx === "d") {
-            //     return false;
-            // }
             path.push([p1.x, p1.y]);
         }
         while (p1.y > p2.y) {
             p1.y -= 1;
-            // let currPx = this.html[p1.x][p1.y];
-            // if (currPx === "*" || currPx === WHITESPACE) {
-            //     if (charToDraw === ".") {
-            //         charToDraw = "#";
-            //     }
-            // }
-            // if (charToDraw === "#" && currPx === ".") {
-            //     charToDraw = ".";
-            // }
-            // if (currPx === "d") {
-            //     return false;
-            // }
             path.push([p1.x, p1.y]);
         }
-        // return this._checkPath(path);
     }
     _checkPath(path) {
         for (let i = 0; i < path.length; i++) {
@@ -741,9 +761,9 @@ class Map extends Graph {
         let randomRoom = this.getRandomVertex();
         let x = getRandomNumber(randomRoom.xMin + 1, randomRoom.xMax - 1);
         let y = getRandomNumber(randomRoom.yMin + 1, randomRoom.yMax - 1);
-
-        randomRoom.tiles[[x, y]] = new Tile(x, y, item.icon);
-        this.html[x][y] = "m";
+        // this.items[[x, y]] = item;
+        this.html[x][y] = item;
+        return true;
     }
 }
 
@@ -768,8 +788,8 @@ class Bedroom extends Map {
     generateMap() {
         return;
     }
-    addMelatonin() {
-        return;
+    addItem() {
+        return false;
     }
 }
 
