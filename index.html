@@ -6,16 +6,31 @@
 <body>
     <div id="location"></div>
 
-    <div id="content">
-        <div id="title">
-            <h1>Dreams Never End</h1>
-            <button id="playButton">Play</button>
-        </div>
-
-        <div id="game"></div>
+    <div id="title">
+        <h1>Dreams Never End</h1>
+        <button id="playButton">Play</button>
     </div>
 
-    <div id="alerts"></div>
+    <div id="game" class="hidden">
+        <div id="map"></div>
+
+        <div id="inventory">
+            <h4 id="selectedItem"></h4>
+            <div id="inventorySpaces" class="inventorySpaces hidden">
+                <div id="space0" class="space"></div>
+                <div id="space1" class="space"></div>
+                <div id="space2" class="space"></div>
+                <div id="space3" class="space"></div>
+                <div id="space4" class="space"></div>
+                <div id="space5" class="space"></div>
+                <div id="space6" class="space"></div>
+                <div id="space7" class="space"></div>
+                <div id="space8" class="space"></div>
+            </div>
+            <button id="inventoryButton" class="hidden">Inventory</button>
+        </div>
+        <div id="alerts"></div>
+    </div>
 
     <script src="./game.js"></script>
 </body>
