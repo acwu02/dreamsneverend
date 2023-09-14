@@ -14,9 +14,20 @@
     <div id="game" class="hidden">
         <div id="map"></div>
 
+        <div id="stats">
+            <div id="hp"></div>
+            <div id="exp"></div>
+        </div>
+
+        <div id="equipped">
+            <div id="weapon"></div>
+            <div id="armor"></div>
+        </div>
+
         <div id="inventory">
+            <button id="inventoryButton" class="hidden">Inventory</button>
             <h4 id="selectedItem"></h4>
-            <div id="inventorySpaces" class="inventorySpaces hidden">
+            <div id="inventorySpaces" class="inventorySpaces hiddenInventory">
                 <div id="space0" class="space"></div>
                 <div id="space1" class="space"></div>
                 <div id="space2" class="space"></div>
@@ -27,7 +38,7 @@
                 <div id="space7" class="space"></div>
                 <div id="space8" class="space"></div>
             </div>
-            <button id="inventoryButton" class="hidden">Inventory</button>
+            <div id="melatonin" class="hiddenInventory">Melatonin found: 0/0</div>
         </div>
         <div id="alerts"></div>
     </div>

@@ -39,6 +39,7 @@ button {
     align-items: center;
     justify-content: center;
     flex: 1;
+    position: relative;
 }
 
 #game > * {
@@ -53,30 +54,50 @@ button {
 }
 
 #alerts {
-    height: 5%;
+    height: 10%;
     text-align: center;
+    white-space: nowrap;
     margin: 0px;
 }
 
 #inventory {
-    height: 20%;
+    height: 25%;
+    position: absolute;
+    top: 0;
+    right: 1em;
     display: flex;
     flex-direction: column;
-    text-align: center;
     align-items: center;
-    justify-content: center;
+    bottom: 30px;
+    padding: 0.5em;
+}
+
+#inventory > * {
+    margin: 0px;
 }
 
 #inventoryButton {
+    flex: 0 0 calc(10% - 20px);
     margin: 10px;
-    margin-top: auto;
 }
 
 .inventorySpaces {
+    flex: 0 0 calc(60% - 20px);
     display: flex;
     flex-wrap: wrap;
     width: 2em;
     height: 60%;
+}
+
+#selectedItem {
+    position: absolute;
+    top: 50px;
+    width: 10em;
+    right: 200px;
+}
+
+.selected {
+    background-color: lightgray;
 }
 
 h4 {
@@ -87,6 +108,32 @@ h4 {
     flex: 0 0 calc(33.333% - 20px);
     margin: 0px;
     padding: 0px;
+}
+
+#stats {
+    display: flex;
+    position: absolute;
+    top: 0;
+    left: 1em;
+    transform-origin: top left;
+}
+
+#equipped {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 3em;
+    left: 1em;
+    transform-origin: top left;
+}
+
+#stats > *, #equipped > *, #inventory > * {
+    padding: 0px;
+    margin: 10px;
+}
+
+.hiddenInventory {
+    visibility: hidden;
 }
 
 .hidden {

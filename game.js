@@ -20,6 +20,76 @@ const BED_POSITION = {
     y: 1
 };
 
+const PLAYER_HP_START = 50000;
+const PLAYER_ATK_START = 1;
+const PLAYER_DEF_START = 1;
+
+const ENEMY_HP_START = 5;
+const ENEMY_ATK_START = 1;
+const ENEMY_DEF_START = 1;
+
+const HEALTH_POTION_START = 10;
+
+const RARITY_BOUND = 0.1;
+
+const DEF_CONST = 0.25;
+
+const WEAPON_TYPES = {
+    "wood": {
+        name: "wood",
+        rarity: 0,
+        damage: 1
+    },
+    "stone": {
+        name: "stone",
+        rarity: 3,
+        damage: 3
+    },
+    "iron": {
+        name: "iron",
+        rarity: 6,
+        damage: 6
+    },
+    "steel": {
+        name: "steel",
+        rarity: 9,
+        damage: 10
+    },
+    "diamond": {
+        name: "diamond",
+        rarity: 12,
+        damage: 15
+    }
+}
+
+const ARMOR_TYPES = {
+    "leather": {
+        name: "leather",
+        rarity: 0,
+        protection: 1
+    },
+    "chainmail": {
+        name: "chainmail",
+        rarity: 3,
+        protection: 3
+    },
+    "iron": {
+        name: "iron",
+        rarity: 6,
+        protection: 6
+    },
+    "steel": {
+        name: "steel",
+        rarity: 9,
+        protection: 10
+    },
+    "diamond": {
+        name: "diamond",
+        rarity: 12,
+        protection: 15
+    }
+}
+
 const WHITESPACE = "&nbsp;";
 // const WHITESPACE = "-";
 
@@ -28,7 +98,7 @@ function getRandomNumber(min, max) {
 }
 
 function logTransformation(x) {
-    return Math.pow(Math.E, Math.random()) * x;
+    return Math.ceil(Math.log(x) + 1);
 }
 
 class Game {
@@ -42,7 +112,12 @@ class Game {
         this._inventory = $("#inventory");
         this._inventorySpaces = $("#inventorySpaces");
         this._inventoryButton = $("#inventoryButton");
+        this._melatonin = $("#melatonin");
         this._selectedItem = $("#selectedItem");
+        this._playerHP = $("#hp");
+        this._playerEXP = $("#exp");
+        this._equippedWeapon = $("#weapon");
+        this._equippedArmor = $("#armor");
 
         this._onStart = this._onStart.bind(this);
         this._loadGame = this._loadGame.bind(this);
@@ -53,11 +128,19 @@ class Game {
         this._closeInventory = this._closeInventory.bind(this);
         this._displayItem = this._displayItem.bind(this);
         this._removeItem = this._removeItem.bind(this);
+        this._equipItem = this._equipItem.bind(this);
+        this._dropItem = this._dropItem.bind(this);
+        this._attack = this._attack.bind(this);
 
-        this._isInventoryOpen = false;
+        this.isInventoryOpen = false;
 
         this._inventoryButton.click(this._openInventory);
         this._playButton.click(this._onStart);
+
+        for (let space of this._inventorySpaces.children()) {
+            space.addEventListener("click", this._equipItem);
+            space.addEventListener("contextmenu", this._dropItem);
+        }
 
         this._keyCodes = {
             "ArrowLeft": [-1, 0],
@@ -65,35 +148,7 @@ class Game {
             "ArrowRight": [1, 0],
             "ArrowDown": [0, 1]
         };
-        this._weaponTypes =
-        {
-            "wood": {
-                rarity: 0.5,
-                damage: 2
-            },
-            "stone": {
-                rarity: 0.2,
-                damage: 4
-            },
-            "iron": {
-                rarity: 0.1,
-                damage: 6
-            }
-        };
-        this._armorTypes = {
-            "leather": {
-                rarity: 0.5,
-                protection: 2
-            },
-            "chainmail": {
-                rarity: 0.2,
-                protection: 4
-            },
-            "iron": {
-                rarity: 0.1,
-                protection: 6
-            }
-        };
+
         this._world = null;
 
         this._weirdness = -1;
@@ -108,27 +163,31 @@ class Game {
         });
     }
     _loadGame() {
-        this._inventory.removeClass("hidden");
+        this._inventory.removeClass("hiddenInventory");
         this._inventoryButton.removeClass("hidden");
         this._player = new Player(this);
+        this._playerHP.html(`HP: ${this._player.hp}`);
+        this._playerEXP.html(`EXP: ${this._player.exp}`);
+        this._equippedWeapon.html(`Weapon: none`);
+        this._equippedArmor.html(`Armor: none`)
         this._createWorld();
     }
     _createWorld() {
         this._weirdness += 1;
-        let numMelatonin = 0;
-        let numItems = 0;
-        let numEnemies = 0;
-        let worldSize = 1 + Math.ceil(Math.pow(Math.E, Math.random()) * this._weirdness);
+        let numMelatonin;
+        let numItems;
+        let numEnemies;
+        let worldSize = 1 + Math.ceil(0.5 * Math.pow(Math.E, Math.random()) * this._weirdness);
         if (this._weirdness === 0) {
             this.alertMessage($(`<h3>Use ARROW KEYS to move</h3>`));
             document.addEventListener("keydown", this._playerMove);
             // TODO remove else condition
         } else {
-            numMelatonin = this._weirdness + Math.ceil(Math.random(0, 2));
-            numItems = this._weirdness + Math.ceil(Math.random(0, 2));
-            numEnemies = this._weirdness + Math.ceil(Math.random(0, 2));
+            numMelatonin = logTransformation(this._weirdness);
+            numItems = logTransformation(this._weirdness);
+            numEnemies = logTransformation(this._weirdness);
         }
-        this._world = new World(worldSize, numMelatonin, numItems, numEnemies);
+        this._world = new World(worldSize, numMelatonin, numItems, numEnemies, this._weirdness);
         this._player.melatoninFound = 0;
         this._player.totalMelatonin = numMelatonin;
         this._updateMap(this._world.bedroom);
@@ -137,34 +196,56 @@ class Game {
     }
     _openInventory(event) {
         event.preventDefault();
-        this._isInventoryOpen = true;
-        this._drawInventory();
-        this._inventorySpaces.removeClass("hidden");
+        this.isInventoryOpen = true;
+        this.drawInventory();
+        this._inventorySpaces.removeClass("hiddenInventory");
+        this._melatonin.removeClass("hiddenInventory");
         this._inventoryButton.off("click");
         this._inventoryButton.click(this._closeInventory);
     }
-    _drawInventory() {
+    drawInventory() {
         for (let i = 0; i < 9; i++) {
-            let icon = this._player.inventory.html[i];
+            let key = Object.keys(this._player.inventory.contents)[i];
+            let icon = ".";
+            if (this._player.inventory.contents[key]) {
+                icon = this._player.inventory.contents[key].icon;
+            }
             let inventorySpace = $(`#space${i}`);
             inventorySpace.html(icon);
             inventorySpace.on("mouseenter", this._displayItem).on("mouseleave", this._removeItem);
         }
     }
     _displayItem(event) {
-        let id = event.target.id[5];
+        let slot = event.target;
+        let id = slot.id[5];
         let item = this._player.inventory.contents[id];
-        this._selectedItem.html(item.name);
+        if (item) {
+            if (item.icon === "m") {
+                this._selectedItem.html("melatonin");
+            } else if (item.icon === "p") {
+                this._selectedItem.html(`${item.name} LCLICK to drink RCLICK to drop`);
+            } else {
+                if (slot.classList.contains("selected")) {
+                    this._selectedItem.html(`${item.name} Equipped`);
+                } else {
+                    this._selectedItem.html(`${item.name} LCLICK to equip RCLICK to drop`);
+                }
+            }
+        }
     }
     _removeItem() {
         this._selectedItem.html("");
     }
     _closeInventory(event) {
         event.preventDefault();
-        this._isInventoryOpen = false;
-        this._inventorySpaces.addClass("hidden");
+        this.isInventoryOpen = false;
+        this._inventorySpaces.addClass("hiddenInventory");
+        this._melatonin.addClass("hiddenInventory");
         this._inventoryButton.off("click");
         this._inventoryButton.click(this._openInventory);
+    }
+    updateMelatonin() {
+        this._melatonin.html(`Melatonin found: ${this._player.melatoninFound}/${this._player.totalMelatonin}`);
     }
     _playerMove(event) {
         event.preventDefault();
@@ -174,9 +255,50 @@ class Game {
             }
             let direction = this._keyCodes[event.code];
             this._player.move(direction);
-            this._currMap.moveEnemies();
+            this._currMap.moveEnemies(this._player);
+            let neighbors = this._player.getNeighbors(this._currMap.tiles)
+            for (let neighbor of neighbors) {
+                if (neighbor.icon === "E") {
+                    if (!this._attackingEnemy) {
+                        this.alertMessage("Press SPACEBAR to attack");
+                    }
+                    this._attackingEnemy = neighbor;
+                    document.addEventListener("keydown", this._attack);
+                }
+            }
+            if (this._player.buffTurnsRemaining > 0) {
+                this._player.decrementBuff();
+                if (this._player.buffTurnsRemaining === 0) {
+                    this.alertMessage("Strength ran out");
+                    this._player.runOutOfStrength();
+                }
+            }
         }
         this._drawMap();
+    }
+    _attack(event) {
+        this._alerts.html("");
+        let playerDamage = this._player.takeDamage(this._attackingEnemy);
+        let string = `Player took ${playerDamage} damage; remaining ${this._player.hp}`
+        this._playerHP.html(`HP: ${this._player.hp}`);
+        if (this._player.hp <= 0) {
+            // TODO death animation
+            alert("YOU DIED LOL");
+        }
+        if (event.code === 'Space') {
+            let enemyDamage = this._attackingEnemy.takeDamage(this._player);
+            string = string.concat(`<br>Enemy took ${enemyDamage} damage; remaining ${this._attackingEnemy.hp}`);
+            if (this._attackingEnemy.hp <= 0) {
+                this.alertMessage("Enemy died<br>Gained 1 EXP");
+                this._player.exp += 1;
+                this._playerEXP.html(`EXP: ${this._player.exp}`);
+                this._currMap.replaceTile(this._attackingEnemy);
+                document.removeEventListener("keydown", this._attack);
+                this._attackingEnemy = null;
+                return;
+            }
+        }
+        this.alertMessage(string);
     }
     _getMelatonin(x, y) {
         this.melatoninFound += 1;
@@ -198,18 +320,19 @@ class Game {
     }
     _goToSleep(event) {
         if (event.code === 'Space' || event.key === ' ' || event.keyCode === 32) {
-            if (this._weirdness > 0 && this.melatoninFound < this.totalMelatonin) {
+            if (this._weirdness > 0 && this._player.melatoninFound < this._player.totalMelatonin) {
                 let alertMessage = `<h3>You are not sleepy. Find melatonin to go to sleep</h3>`;
                 this._alerts.html($(alertMessage));
                 return;
             }
             this._map.fadeOut("slow").promise().done(() => {
                 this._player.inventory.clearMelatonin();
-                if (this._isInventoryOpen === true) {
-                    this._drawInventory();
+                if (this.isInventoryOpen === true) {
+                    this.drawInventory();
                 }
                 this._alerts.html("");
                 this._createWorld();
+                this._melatonin.html(`Melatonin found: ${this._player.melatoninFound}/${this._player.totalMelatonin}`)
                 this._map.fadeIn("slow");
             });
         } else if (event.code === "ArrowLeft" || event.code === "ArrowRight"
@@ -229,7 +352,11 @@ class Game {
                 this._alerts.html("Door is locked");
                 return;
             }
-            this._replaceTile(this._player);
+            if (this._attackingEnemy) {
+                this._attackingEnemy = null;
+                document.removeEventListener("keydown", this._attack);
+            }
+            this._currMap.replaceTile(this._player);
             let oppositeDoor = this._findOppositeDoor();
             let newMap = oppositeDoor.src;
             let adjacent = newMap.doorFindAdjacent(oppositeDoor);
@@ -241,10 +368,6 @@ class Game {
             this._alerts.html("");
             document.removeEventListener('keydown', this._tryOpenDoor);
         }
-    }
-    _replaceTile(oldTile) {
-        let tile = new Tile(oldTile.x, oldTile.y, ".");
-        this._currMap.updateTile(tile);
     }
     _updateMap(newMap) {
         this._currMap = newMap;
@@ -273,6 +396,85 @@ class Game {
     alertMessage(message) {
         this._alerts.html(message);
     }
+    _equipItem(event) {
+        let inventorySpace = event.target;
+        let id = event.target.id[5];
+        let item = this._player.inventory.contents[id];
+        if (item) {
+            if (item.icon === "m") {
+                return;
+            } else if (item.icon === "p") {
+                this._drinkPotion(id, item);
+            } else {
+                if (item.icon === "w") {
+                    this._equipWeapon(id, item);
+
+                } else if (item.icon === "a") {
+                    this._equipArmor(id, item);
+                }
+                item.isEquipped = true;
+                this.alertMessage(`Equipped ${item.name}`);
+                inventorySpace.classList.add("selected");
+            }
+        }
+    }
+    _equipWeapon(id, weapon) {
+        this._player.equipWeapon(id, weapon);
+        if (this._player.equippedWeapon) {
+            let oldKey = this._player.equippedWeapon.key;
+            let oldSpace = $(`#space${oldKey}`);
+            oldSpace.removeClass("selected");
+        }
+        this._player.equippedWeapon = {
+            key: id,
+            val: weapon,
+        };
+        this._selectedItem.html(`${weapon.name} Equipped`);
+        this._equippedWeapon.html(`Weapon: ${weapon.name}`);
+    }
+    _equipArmor(id, armor) {
+        this._player.equipArmor(id, armor);
+        if (this._player.equippedArmor) {
+            let oldKey = this._player.equippedArmor.key;
+            let oldSpace = $(`#space${oldKey}`);
+            oldSpace.removeClass("selected");
+        }
+        this._player.equippedArmor = {
+            key: id,
+            val: armor,
+        };
+        this._selectedItem.html(`${armor.name} Equipped`);
+        this._equippedArmor.html(`Armor: ${armor.name}`);
+    }
+    _dropItem(event) {
+        event.preventDefault();
+        let id = event.target.id[5];
+        let item = this._player.inventory.contents[id];
+        if (item) {
+            if (this._player.equippedArmor && this._player.equippedArmor.val === item) return;
+            if (this._player.equippedWeapon && this._player.equippedWeapon.val === item) return;
+            let neighbors = this._player.getOpenNeighbors(this._currMap.tiles);
+            for (let neighbor of neighbors) {
+                if (this._currMap.isOpenTile(neighbor.x, neighbor.y)) {
+                    item.x = neighbor.x;
+                    item.y = neighbor.y;
+                    this._currMap.updateTile(item);
+                    this._drawMap();
+                    this._player.inventory.remove(id);
+                    this.drawInventory();
+                    break;
+                }
+            }
+            this._selectedItem.html("");
+        }
+    }
+    _drinkPotion(id, potion) {
+        this._player.inventory.remove(id);
+        this.drawInventory();
+        this._player.drinkPotion(potion);
+        this._playerHP.html(`HP: ${this._player.hp}`);
+        this.alertMessage(potion.message);
+    }
 }
 
 class Tile {
@@ -295,18 +497,22 @@ class Tile {
     }
     // Get neighboring nodes that are walkable
     getNeighbors(tiles) {
-        const neighbors = [];
-        const dx = [-1, 0, 1, 0]; // Neighboring cell x offsets (left, up, right, down)
-        const dy = [0, -1, 0, 1]; // Neighboring cell y offsets (left, up, right, down)
+        let neighbors = [];
+        let dx = [-1, 0, 1, 0]; // Neighboring cell x offsets (left, up, right, down)
+        let dy = [0, -1, 0, 1]; // Neighboring cell y offsets (left, up, right, down)
         for (let i = 0; i < 4; i++) {
-            const nx = this.x + dx[i];
-            const ny = this.y + dy[i];
-            let tile = tiles[`${nx},${ny}`];
-            if (tile && tile.icon !== ("*") && tile.icon !== (WHITESPACE)) {
+            let nx = this.x + dx[i];
+            let ny = this.y + dy[i];
+            if (Object.keys(tiles).indexOf(`${nx},${ny}`) !== -1) {
+                let tile = tiles[`${nx},${ny}`]
                 neighbors.push(tile);
             }
         }
         return neighbors;
+    }
+    getOpenNeighbors(tiles) {
+        let neighbors = this.getNeighbors(tiles);
+        return neighbors.filter((neighbor) => neighbor.icon === ".");
     }
     updatePosition(newX, newY, map) {
         this.x = newX;
@@ -324,26 +530,46 @@ class Bed extends Tile {
     }
 }
 
-class Player extends Tile {
+class Entity extends Tile {
+    constructor(x, y, icon, hp, atk) {
+        super(x, y, icon);
+        this.hp = hp;
+        this.atk = atk;
+    }
+}
+
+class Player extends Entity {
     constructor(game) {
-        super(PLAYER_START.x, PLAYER_START.y, "X");
+        super(PLAYER_START.x, PLAYER_START.y, "X", PLAYER_HP_START, PLAYER_ATK_START, PLAYER_DEF_START);
         this.game = game;
         this.inventory = new Inventory();
         this.oldPos = [-1, -1];
         this.map = null;
 
+        this.equippedWeapon = null;
+        this.equippedArmor = null;
+        this.hp = PLAYER_HP_START;
+        this.baseAtk = PLAYER_ATK_START;
+        this.baseDef = PLAYER_DEF_START;
+        this.exp = 0;
+        this.def = 1;
+
         this.melatoninFound = 0;
         this.totalMelatonin = 0;
+    }
+    takeDamage(opp) {
+        let damageToTake = Math.floor(opp.atk * (1 / this.def));
+        this.hp -= damageToTake;
+        return damageToTake;
     }
     move(direction) {
         let oldPos = [this.x, this.y];
         let newPos = [this.x + direction[0], this.y + direction[1]];
         let tile = this.map.getTile(newPos[0], newPos[1]);
         if (tile.icon === ".") {
+            this.map.replaceTile(this);
             this.updatePosition(this.x + direction[0], this.y + direction[1], this.map);
             this.map.updateTile(this);
-            let emptyTile = new Tile(oldPos[0], oldPos[1], ".");
-            this.map.tiles[oldPos] = emptyTile;
         } else {
             tile.interact(this);
         }
@@ -352,6 +578,9 @@ class Player extends Tile {
     pickUpItem(item) {
         if (this.inventory.insert(item) === false) {
             return false;
+        }
+        if (this.game.isInventoryOpen) {
+            this.game.drawInventory();
         }
         return true;
     }
@@ -364,189 +593,240 @@ class Player extends Tile {
     sleep() {
         this.game.sleep();
     }
+    equipWeapon(id, weapon) {
+        this.weapon = {
+            key: id,
+            val: weapon
+        };
+        this.atk = this.baseAtk + this.weapon.val.material.damage;
+    }
+    equipArmor(id, armor) {
+        this.armor = {
+            key: id,
+            val: armor
+        };
+        this.def = this.baseDef + this.armor.val.material.protection;
+    }
+    drinkPotion(potion) {
+        potion.giveEffects(this);
+    }
+    addStrength(strengthToAdd) {
+        this.buffTurnsRemaining = 20;
+        this.buffedStrength = strengthToAdd;
+        this.atk += this.buffedStrength;
+    }
+    decrementBuff() {
+        this.buffTurnsRemaining -= 1;
+    }
+    runOutOfStrength() {
+        this.atk -= this.buffedStrength;
+        this.buffedStrength = 0;
+    }
+    addHealth(healthToAdd) {
+        if (this.hp + healthToAdd > PLAYER_HP_START) {
+            this.hp = PLAYER_HP_START;
+        } else {
+            this.hp += healthToAdd;
+        }
+    }
 }
 
 class Inventory {
     constructor() {
-        this.html = [".", ".", ".", ".", ".", ".", ".", ".", "."];
-        this.contents = [];
+        this.contents = {
+            0: null,
+            1: null,
+            2: null,
+            3: null,
+            4: null,
+            5: null,
+            6: null,
+            7: null,
+            8: null,
+            9: null
+        };
     }
     insert(item) {
-        if (this.contents.length === 9) {
-            return false;
+        for (let key of Object.keys(this.contents)) {
+            if (!this.contents[key]) {
+                this.contents[key] = item;
+                return true;
+            }
         }
-        this.contents.push(item);
-        this.html[this.contents.length - 1] = item.icon;
-        return true;
+        return false;
     }
     // TODO
-    remove(item) {
-
+    remove(id) {
+        this.contents[id] = null;
     }
     clearMelatonin() {
-        this.html = this.html.filter(item => item !== "m");
-        this.contents = this.contents.filter(item => item.name !== "melatonin");
+        for (let key of Object.keys(this.contents)) {
+            if (this.contents[key] && this.contents[key].icon === "m") {
+                this.contents[key] = null;
+            }
+        }
     }
 }
 
 class Item extends Tile {
-    constructor(level, materials, type, icon, map) {
-        super(null, null, icon);
-        this._level = level;
-        this._type = type;
+    constructor(map) {
+        super(null, null, null);
+        this._map = map;
         this._attribs = [];
-        this._material = this._generateType(materials);
-        this.name = `${this._material} ${this._type}`
-    }
-    _generateType() {
-        return;
-    }
-    interact(player) {
-        player.pickUpItem(this);
-        this._pickUpAlert(player);
-        this.map._replaceTile(this);
     }
     _pickUpAlert(player) {
         player.game.alertMessage(`Found ${this.name}`);
     }
+    interact(player) {
+        if (player.pickUpItem(this)) {
+            this._pickUpAlert(player);
+            player.map.replaceTile(this);
+        } else {
+            player.game.alertMessage("Inventory full");
+        }
+    }
 }
 
 class Melatonin extends Item {
-    constructor() {
-        super();
+    constructor(map) {
+        super(map);
         this.icon = "m";
         this.name = "melatonin";
     }
-    _generateType() {
-        return;
-    }
-    _pickUpAlert(player) {
+    interact(player) {
+        this._map.replaceTile(this);
         player.melatoninFound += 1;
+        player.game.updateMelatonin();
         player.game.alertMessage(`Found ${player.melatoninFound} out of ${player.totalMelatonin} total melatonin`);
     }
 }
 
 class Weapon extends Item {
-    constructor(level, materials) {
-        super(level, materials, "sword", "w");
-    }
-    _generateType(types) {
-        for (let key of Object.keys(types)) {
-            let type = types[key];
-            let weight = 1 / (this._level - type.rarity) ** 2;
-            type.rarity = weight * type.rarity;
-        }
-        const typeEntries = Object.entries(types);
-        const totalRaritySum = typeEntries.reduce((sum, [_, type]) => sum + type.rarity, 0);
-        const randomValue = Math.random() * totalRaritySum;
-        let cumulativeSum = 0;
-        for (const [typeName, type] of typeEntries) {
-            cumulativeSum += type.rarity;
-            if (randomValue < cumulativeSum) {
-                return typeName;
-            }
-        }
+    constructor(map, material) {
+        super(map);
+        this.icon = "w";
+        this.material = material;
+        this.name = `${this.material.name} sword`;
     }
     addAttribute() {
-
+        //TODO
     }
 }
 
 class Armor extends Item {
-    constructor(level, materials) {
-        super(level, materials, "armor", "a");
-    }
-    _generateType(types) {
-        return;
-    }
-}
-
-class Node {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.g = 0;  // Cost from start node to this node
-        this.h = 0;  // Heuristic cost from this node to goal node
-        this.f = 0;  // Total cost (f = g + h)
-        this.parent = null;
-        this.blocked = false; // Whether the node is walkable or not
-    }
-
-    // Calculate the heuristic cost (Euclidean distance) from this node to the goal node
-    heuristic(goal) {
-        return Math.sqrt((this.x - goal.x) ** 2 + (this.y - goal.y) ** 2);
-    }
-
-    // Get neighboring nodes that are walkable
-    getNeighbors(grid) {
-        const neighbors = [];
-        const dx = [-1, 0, 1, 0]; // Neighboring cell x offsets (left, up, right, down)
-        const dy = [0, -1, 0, 1]; // Neighboring cell y offsets (left, up, right, down)
-
-        for (let i = 0; i < 4; i++) {
-            const nx = this.x + dx[i];
-            const ny = this.y + dy[i];
-            if (nx >= 0 && nx < grid[0].length && ny >= 0 && ny < grid.length && !grid[ny][nx].blocked) {
-                neighbors.push(grid[ny][nx]);
-            }
-        }
-
-        return neighbors;
+    constructor(map, material) {
+        super(map);
+        this.icon = "a";
+        this.material = material;
+        this.name = `${this.material.name} armor`;
     }
 }
 
-class Enemy extends Tile {
+class Potion extends Item {
+    constructor(level, type, map) {
+        super(map);
+        this._level = level;
+        this.icon = "p";
+        this.type = type;
+        this.name = `${this.type} potion`;
+    }
+}
+
+class StrengthPotion extends Potion {
     constructor(level, map) {
+        super(level, "strength", map);
+    }
+    giveEffects(player) {
+        let strengthAdded = 1 + Math.floor(Math.log(this._level));
+        this.message = `Gained ${strengthAdded} strength for 20 turns`;
+        player.addStrength(strengthAdded);
+    }
+}
+
+class HealthPotion extends Potion {
+    constructor(level, map) {
+        super(level, "health", map);
+    }
+    giveEffects(player) {
+        let healthAdded = HEALTH_POTION_START + Math.floor(Math.log(this._level));
+        this.message = `Gained ${healthAdded} health`;
+        player.addHealth(healthAdded);
+    }
+}
+
+class Enemy extends Entity {
+    constructor(level, map, hp, atk, def) {
         super(null, null, "E");
         this._level = level;
         this._map = map;
-        this.x = null;
-        this.y = null;
+        this.hp = hp;
+        this.atk = atk;
+        this.def = def;
+    }
+    takeDamage(opp) {
+        this.hp -= opp.atk;
+        return opp.atk;
     }
     move(dest) {
         let path = this._aStar(dest);
-
-        this.x = path[0].x;
-        this.y = path[0].y;
+        if (path && path.length > 1) {
+            this.x = path[1].x;
+            this.y = path[1].y;
+        }
     }
     _aStar(dest) {
-        const openList = [];
-        const closedSet = new Set();
+        let openSet = [this];
+        let closedSet = new Set();
 
-        openList.push(this);
-        while (openList.length > 0) {
-            openList.sort((a, b) => a.f - b.f);
-            const current = openList.shift();
-            if (current === dest) {
-                const path = [];
-                let tile = current;
-                while (tile) {
-                    path.push({ x: tile.x, y: tile.y });
-                    tile = tile.parent;
+        while (openSet.length > 0) {
+            let currentNode = openSet[0];
+            let currentIndex = 0;
+
+            for (let i = 1; i < openSet.length; i++) {
+                if (openSet[i].f < currentNode.f) {
+                    currentNode = openSet[i];
+                    currentIndex = i;
                 }
-                return path.reverse();
             }
-            closedSet.add(current);
 
-            const neighbors = current.getNeighbors(this._map.tiles);
-            for (const neighbor of neighbors) {
-                if (closedSet.has(neighbor)) continue;
+            openSet.splice(currentIndex, 1);
+            closedSet.add(currentNode);
 
-                const tentativeG = current.g + 1; // Assuming each move cost is 1
+            let neighbors = [];
+            for (let neighbor of currentNode.getNeighbors(this._map.tiles)) {
+                if (neighbor === dest) {
+                    let path = [];
+                    let current = currentNode;
+                    while (current !== null) {
+                        path.push({ x: current.x, y: current.y });
+                        current = current.parent;
+                    }
+                    return path.reverse();
+                }
+            }
 
-                if (!openList.includes(neighbor) || tentativeG < neighbor.g) {
-                    neighbor.g = tentativeG;
-                    neighbor.h = neighbor.heuristic(dest);
-                    neighbor.f = neighbor.g + neighbor.h;
-                    neighbor.parent = current;
+            for (let neighbor of currentNode.getOpenNeighbors(this._map.tiles)) {
+                if (neighbor && neighbor.icon === ".") {
+                    neighbors.push(neighbor);
+                }
+            }
+            for (let neighbor of neighbors) {
+                if (!closedSet.has(neighbor)) {
+                    let tentativeG = currentNode.g + 1;
+                    if (tentativeG < neighbor.g || !openSet.includes(neighbor)) {
+                        neighbor.g = tentativeG;
+                        neighbor.h = neighbor.heuristic(dest);
+                        neighbor.f = neighbor.g + neighbor.h;
+                        neighbor.parent = currentNode;
 
-                    if (!openList.includes(neighbor)) {
-                        openList.push(neighbor);
+                        if (!openSet.includes(neighbor)) {
+                            openSet.push(neighbor);
+                        }
                     }
                 }
             }
         }
-        return null;
+        return null; // No path found
     }
 }
 
@@ -645,7 +925,7 @@ class Graph {
     }
     printGraph() {
         for (let vertex of Object.keys(this.vertices)) {
-            const neighbors = this.adjacencyList[vertex].join(", ");
+            let neighbors = this.adjacencyList[vertex].join(", ");
             console.log(`${vertex} -> ${neighbors}`);
         }
     }
@@ -654,7 +934,7 @@ class Graph {
         this.adjacencyList = {};
     }
     randomlyAddEdges() {
-        const numEdges = Math.floor(Math.random() * (Object.keys(this.vertices).length - 1));
+        let numEdges = Math.floor(Math.random() * (Object.keys(this.vertices).length - 1));
         for (let i = 0; i < numEdges; i++) {
             let v1 = this.getRandomVertex();
             let v2 = this.getRandomVertex();
@@ -704,34 +984,18 @@ class Graph {
             }
         }
     }
-    bfs(startVertex) {
-        const visited = {};
-        const queue = [];
-        visited[startVertex] = true;
-        queue.push(startVertex);
-        while (queue.length > 0) {
-            const currentVertex = queue.shift();
-            console.log(currentVertex);
-            const adjacentVertices = this.adjacencyList[currentVertex];
-            for (let i = 0; i < adjacentVertices.length; i++) {
-                const neighbor = adjacentVertices[i];
-                if (!visited[neighbor]) {
-                    visited[neighbor] = true;
-                    queue.push(neighbor);
-                }
-            }
-        }
-    }
 }
 
 class World extends Graph {
-    constructor(size, numMelatonin, numItems, numEnemies) {
+    constructor(size, numMelatonin, numItems, numEnemies, weirdness) {
         super();
         this.size = size;
         this.bedroom = null;
-        this._numMelatonin = numMelatonin;
+        this.numMelatonin = numMelatonin;
         this._numItems = numItems;
         this._numEnemies = numEnemies;
+        this._weirdness = weirdness;
+        this.melatonin = [];
         this.generate();
     }
     generate() {
@@ -759,8 +1023,8 @@ class World extends Graph {
     _populate() {
         this._addDoors();
         this._addMelatonin();
-        // this._addItems();
-        // this._addEnemies();
+        this._addItems();
+        this._addEnemies();
     }
     _addDoors() {
         if (this.size === 1) {
@@ -778,11 +1042,12 @@ class World extends Graph {
     }
     _addMelatonin() {
         let melatoninAdded = 0;
-        while (melatoninAdded < this._numMelatonin) {
+        while (melatoninAdded < this.numMelatonin) {
             let randomMap = this.getRandomVertex();
-            let melatonin = new Melatonin();
+            let melatonin = new Melatonin(randomMap);
             if (randomMap.addItem(melatonin) === true) {
                 melatoninAdded += 1;
+                this.melatonin.push(randomMap);
             }
         }
     }
@@ -790,25 +1055,62 @@ class World extends Graph {
         let itemsAdded = 0;
         while (itemsAdded < this._numItems) {
             let randomMap = this.getRandomVertex();
-            if (getRandomNumber(0, 1) === 0) {
-                let weapon = new Weapon(this._weirdness, this._weaponTypes);
+            let material;
+            if (Math.random() < 0.333) {
+                material = this._generateMaterial(WEAPON_TYPES);
+                let weapon = new Weapon(randomMap, material);
                 if (randomMap.addItem(weapon) === true) {
                     itemsAdded += 1
                 }
+            // } else if (Math.random() > 0.666) {
+            //     material = this._generateMaterial(ARMOR_TYPES);
+            //     let armor = new Armor(randomMap, material);
+            //     if (randomMap.addItem(armor) === true) {
+            //         itemsAdded += 1
+            //     }
             } else {
-                let armor = new Armor(this._weirdness, this._armorTypes);
-                if (randomMap.addItem(armor) === true) {
+                let potion;
+                if (getRandomNumber(0, 1) === 0) {
+                    potion = new StrengthPotion(this._weirdness, randomMap);
+                } else {
+                    potion = new HealthPotion(this._weirdness, randomMap);
+                }
+                if (randomMap.addItem(potion) === true) {
                     itemsAdded += 1
                 }
             }
         }
     }
-
+    _generateMaterial(materials) {
+        let chances = {};
+        for (let key of Object.keys(materials)) {
+            let material = materials[key];
+            let chance = this._generateChance(material);
+            chances[chance] = material;
+        }
+        let entries = Object.keys(chances).map(str => parseFloat(str));
+        let totalRaritySum = entries.reduce((a, b) => {
+            return a + b;
+        });
+        let randomValue = Math.random() * totalRaritySum;
+        let cumulativeSum = 0;
+        for (let chance of entries) {
+            cumulativeSum += chance
+            if (randomValue < cumulativeSum) {
+                return chances[chance];
+            }
+        }
+    }
+    _generateChance(material) {
+        return Math.E ** (-((this._weirdness - material.rarity) ** 2));
+    }
     _addEnemies() {
         let enemiesAdded = 0;
         while (enemiesAdded < this._numEnemies) {
             let randomMap = this.getRandomVertex();
-            let enemy = new Enemy(this._weirdness, randomMap);
+            let hp = Math.floor(0.5 * this._weirdness + ENEMY_HP_START);
+            let atk = Math.floor(0.5 * this._weirdness + ENEMY_ATK_START);
+            let enemy = new Enemy(this._weirdness, randomMap, hp, atk);
             if (randomMap.addItem(enemy) === true) {
                 enemiesAdded += 1;
             }
@@ -825,6 +1127,10 @@ class Map extends Graph {
         this.html = [];
         this.tiles = {};
         this.enemies = {};
+    }
+    replaceTile(oldTile) {
+        let tile = new Tile(oldTile.x, oldTile.y, ".");
+        this.updateTile(tile);
     }
     drawDoor(door) {
         let randomRoom = this.getRandomVertex();
@@ -849,7 +1155,7 @@ class Map extends Graph {
         this.tiles[[door.x, door.y]] = door;
     }
     updateTile(newTile) {
-        this.tiles[[newTile.x, newTile.y]] = newTile;
+        this.tiles[`${newTile.x},${newTile.y}`] = newTile;
     }
     generate() {
         this._generateRooms();
@@ -1013,28 +1319,53 @@ class Map extends Graph {
     }
     addItem(item) {
         let randomRoom = this.getRandomVertex();
-        let x = getRandomNumber(randomRoom.xMin + 1, randomRoom.xMax - 1);
-        let y = getRandomNumber(randomRoom.yMin + 1, randomRoom.yMax - 1);
-        item.x = x;
-        item.y = y;
+        item.x = getRandomNumber(randomRoom.xMin + 1, randomRoom.xMax - 1);
+        item.y = getRandomNumber(randomRoom.yMin + 1, randomRoom.yMax - 1);
+        while (!this._isValidItemLocation(item)) {
+            item.x = getRandomNumber(randomRoom.xMin + 1, randomRoom.xMax - 1);
+            item.y = getRandomNumber(randomRoom.yMin + 1, randomRoom.yMax - 1);
+        }
         this.updateTile(item);
         return true;
     }
-    moveEnemies(playerPosition) {
+    _isValidItemLocation(item) {
+        if (!this.isOpenTile(item.x, item.y)) {
+            return false;
+        }
+        for (let tile of item.getNeighbors(this.tiles)) {
+            if (tile.icon === 'd') {
+                return false;
+            }
+        }
+        return true;
+    }
+    _adjacentsAreClear(x, y) {
+        let dirs = [[-1, 0], [1, 0], [0, 1], [0, -1]];
+        for (let dir of dirs) {
+            let adjX = x + dir[0];
+            let adjY = y + dir[1];
+            if (this.getTile(adjX, adjY).icon === ".") {
+                return true;
+            }
+        }
+        return false;
+    }
+    moveEnemies(player) {
         let enemies = Object.keys(this.tiles).filter(key => this.tiles[key].icon === "E");
         for (let key of enemies) {
             let enemy = this.tiles[key];
-            this.tiles[[enemy.x, enemy.y]] = new Tile(enemy.x, enemy.y, ".");
-            this.html[enemy.x][enemy.y] = ".";
-            enemy.move(playerPosition);
-            this.tiles[[enemy.x, enemy.y]] = enemy;
-            this.html[enemy.x][enemy.y] = enemy.icon;
+            this.replaceTile(enemy);
+            enemy.move(player);
+            this.updateTile(enemy);
         }
     }
     getTile(x, y) {
         let tile = this.tiles[`${x},${y}`];
         if (tile) return tile;
         else return null;
+    }
+    isOpenTile(x, y) {
+        return (this.getTile(x, y).icon === ".");
     }
     toHTML() {
         let newMap = [];
@@ -1049,13 +1380,6 @@ class Map extends Graph {
                 }
             }
         }
-        // for (let key of Object.keys(this.tiles)) {
-        //     let tile = this.tiles[key];
-        //     let coords = key.split(",");
-        //     let x = parseInt(coords[0]);
-        //     let y = parseInt(coords[1]);
-        //     newMap[y][x] = tile.icon;
-        // }
         return newMap;
     }
     doorFindAdjacent(door) {
