@@ -33,6 +33,13 @@ button {
     height: 100%;
 }
 
+#deathmessage {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
 #game {
     display: flex;
     flex-direction: column;
@@ -112,30 +119,33 @@ h4 {
 
 #stats {
     display: flex;
+}
+
+#playerInfo {
     position: absolute;
     top: 0;
     left: 1em;
     transform-origin: top left;
 }
 
-#equipped {
+#playerInfo > * {
+    padding: 5px;
+    margin: 5px;
+}
+
+#upgradeMenu {
+    justify-content: center;
+    height: 10%;
+}
+
+.flex {
     display: flex;
-    flex-direction: column;
-    position: absolute;
-    top: 3em;
-    left: 1em;
-    transform-origin: top left;
-}
-
-#stats > *, #equipped > *, #inventory > * {
-    padding: 0px;
-    margin: 10px;
-}
-
-.hiddenInventory {
-    visibility: hidden;
 }
 
 .hidden {
     display: none;
+}
+
+.hidden2 {
+    visibility: hidden;
 }

@@ -1,8 +1,8 @@
 const MAP_WIDTH = 20;
 const MAP_HEIGHT = 20;
 
-const BEDROOM_HEIGHT = 5;
-const BEDROOM_WIDTH = 11;
+const SPECIAL_HEIGHT = 5;
+const SPECIAL_WIDTH = 11;
 
 const SIZE_CONST = 3;
 const EDGE_CONST = 2;
@@ -11,7 +11,7 @@ const PLAYER_START = {
     x: 5,
     y: 2
 };
-const BEDROOM_DOOR = {
+const SPECIAL_DOOR = {
     x: 5,
     y: 4
 };
@@ -20,12 +20,29 @@ const BED_POSITION = {
     y: 1
 };
 
-const PLAYER_HP_START = 50000;
+const FORGE_POSITION = {
+    x: 5,
+    y: 2
+};
+
+const FORGE_SPAWN_CHANCE = 0.2;
+
+const SPECIAL_MAP = [
+    ["*", "*", "*", "*", "*", "*", "*", "*", "*", "*", "*"],
+    ["*", ".", ".", ".", ".", ".", ".", ".", ".", ".", "*"],
+    ["*", ".", ".", ".", ".", ".", ".", ".", ".", ".", "*"],
+    ["*", ".", ".", ".", ".", ".", ".", ".", ".", ".", "*"],
+    ["*", "*", "*", "*", "*", "*", "*", "*", "*", "*", "*"],
+];
+
+const PLAYER_HP_START = 50;
 const PLAYER_ATK_START = 1;
 const PLAYER_DEF_START = 1;
 
-const ENEMY_HP_START = 5;
-const ENEMY_ATK_START = 1;
+const HP_INCREMENT_VAL = 10;
+
+const ENEMY_HP_START = 4;
+const ENEMY_ATK_START = 0;
 const ENEMY_DEF_START = 1;
 
 const HEALTH_POTION_START = 10;
@@ -33,6 +50,8 @@ const HEALTH_POTION_START = 10;
 const RARITY_BOUND = 0.1;
 
 const DEF_CONST = 0.25;
+
+const START_UPGRADE_COST = 1;
 
 const WEAPON_TYPES = {
     "wood": {
@@ -114,10 +133,12 @@ class Game {
         this._inventoryButton = $("#inventoryButton");
         this._melatonin = $("#melatonin");
         this._selectedItem = $("#selectedItem");
+        this._level = $("#level");
         this._playerHP = $("#hp");
         this._playerEXP = $("#exp");
         this._equippedWeapon = $("#weapon");
         this._equippedArmor = $("#armor");
+        this._upgradeMenu = $("#upgradeMenu");
 
         this._onStart = this._onStart.bind(this);
         this._loadGame = this._loadGame.bind(this);
@@ -125,12 +146,18 @@ class Game {
         this._goToSleep = this._goToSleep.bind(this);
         this._tryOpenDoor = this._tryOpenDoor.bind(this);
         this._openInventory = this._openInventory.bind(this);
+        this._closeUpgradeMenu = this._closeUpgradeMenu.bind(this);
         this._closeInventory = this._closeInventory.bind(this);
         this._displayItem = this._displayItem.bind(this);
         this._removeItem = this._removeItem.bind(this);
         this._equipItem = this._equipItem.bind(this);
         this._dropItem = this._dropItem.bind(this);
+        this._upgrade = this._upgrade.bind(this);
         this._attack = this._attack.bind(this);
+
+        this._restoreHP = this._restoreHP.bind(this);
+        this._upgradeMaxHP = this._upgradeMaxHP.bind(this);
+        this._upgradeWeapon = this._upgradeWeapon.bind(this);
 
         this.isInventoryOpen = false;
 
@@ -141,6 +168,14 @@ class Game {
             space.addEventListener("click", this._equipItem);
             space.addEventListener("contextmenu", this._dropItem);
         }
+
+        this._upgrade1 = $("#upgrade1");
+        this._upgrade2 = $("#upgrade2");
+        this._upgrade3 = $("#upgrade3");
+
+        this._upgrade1.click(this._restoreHP);
+        this._upgrade2.click(this._upgradeMaxHP);
+        this._upgrade3.click(this._upgradeWeapon);
 
         this._keyCodes = {
             "ArrowLeft": [-1, 0],
@@ -155,6 +190,10 @@ class Game {
 
         this._door = null;
         this._currMap = null;
+
+        this._upgrade1Cost = START_UPGRADE_COST;
+        this._upgrade2Cost = START_UPGRADE_COST;
+        this._upgrade3Cost = START_UPGRADE_COST;
     }
     _onStart(event) {
         event.preventDefault();
@@ -163,7 +202,7 @@ class Game {
         });
     }
     _loadGame() {
-        this._inventory.removeClass("hiddenInventory");
+        this._inventory.removeClass("hidden2");
         this._inventoryButton.removeClass("hidden");
         this._player = new Player(this);
         this._playerHP.html(`HP: ${this._player.hp}`);
@@ -173,11 +212,18 @@ class Game {
         this._createWorld();
     }
     _createWorld() {
+        // if (this._weirdness === 0) {
+        //     this._weirdness += 2;
+        // }
         this._weirdness += 1;
+        this._level.html(`Level: ${this._weirdness}`);
         let numMelatonin;
         let numItems;
         let numEnemies;
-        let worldSize = 1 + Math.ceil(0.5 * Math.pow(Math.E, Math.random()) * this._weirdness);
+        let worldSize = 1 + Math.ceil(2 * Math.log(this._weirdness));
+        if (worldSize === 1) {
+            worldSize++;
+        }
         if (this._weirdness === 0) {
             this.alertMessage($(`<h3>Use ARROW KEYS to move</h3>`));
             document.addEventListener("keydown", this._playerMove);
@@ -198,8 +244,11 @@ class Game {
         event.preventDefault();
         this.isInventoryOpen = true;
         this.drawInventory();
-        this._inventorySpaces.removeClass("hiddenInventory");
-        this._melatonin.removeClass("hiddenInventory");
+        this._openInventorySpaces();
+    }
+    _openInventorySpaces() {
+        this._inventorySpaces.removeClass("hidden2");
+        this._melatonin.removeClass("hidden2");
         this._inventoryButton.off("click");
         this._inventoryButton.click(this._closeInventory);
     }
@@ -239,8 +288,8 @@ class Game {
     _closeInventory(event) {
         event.preventDefault();
         this.isInventoryOpen = false;
-        this._inventorySpaces.addClass("hiddenInventory");
-        this._melatonin.addClass("hiddenInventory");
+        this._inventorySpaces.addClass("hidden2");
+        this._melatonin.addClass("hidden2");
         this._inventoryButton.off("click");
         this._inventoryButton.click(this._openInventory);
     }
@@ -279,12 +328,11 @@ class Game {
     _attack(event) {
         this._alerts.html("");
         let playerDamage = this._player.takeDamage(this._attackingEnemy);
-        let string = `Player took ${playerDamage} damage; remaining ${this._player.hp}`
-        this._playerHP.html(`HP: ${this._player.hp}`);
+        let string = `Player took ${playerDamage} damage; remaining ${this._player.hp}`;
         if (this._player.hp <= 0) {
-            // TODO death animation
-            alert("YOU DIED LOL");
+            this._gameOver();
         }
+        this._playerHP.html(`HP: ${this._player.hp}`);
         if (event.code === 'Space') {
             let enemyDamage = this._attackingEnemy.takeDamage(this._player);
             string = string.concat(`<br>Enemy took ${enemyDamage} damage; remaining ${this._attackingEnemy.hp}`);
@@ -382,10 +430,6 @@ class Game {
             }
         }
     }
-    _generateArmor() {
-        // let numOfAttributes =
-
-    }
     _alertMessage(message) {
         let alertMessage = `<h3>Press SPACEBAR to ${message}</h3>`;
         let html = this._alerts.html();
@@ -394,6 +438,7 @@ class Game {
         }
     }
     alertMessage(message) {
+        this._alerts.html("");
         this._alerts.html(message);
     }
     _equipItem(event) {
@@ -475,6 +520,87 @@ class Game {
         this._playerHP.html(`HP: ${this._player.hp}`);
         this.alertMessage(potion.message);
     }
+    _gameOver() {
+        this._game.fadeOut("slow").promise().done(() => {
+            let children = this._inventorySpaces.children();
+            children.each(function(index, child) {
+                $(child).removeClass("selected");
+            });
+            this._player.melatoninFound = 0;
+            this.updateMelatonin();
+            this._weirdness = -1;
+            this._attackingEnemy = null;
+            document.removeEventListener("keydown", this._attack);
+            this._loadGame();
+            this.drawInventory();
+        });
+    }
+    tryUpgrade(anvil) {
+        this._anvil = anvil;
+        this._alertMessage("upgrade");
+        document.addEventListener("keydown", this._upgrade);
+    }
+    _upgrade(event) {
+        if (event.code === 'Space') {
+            if (this._anvil.hasBeenUsed === false) {
+                this._upgrade1.html(`Restore HP<br>${this._upgrade1Cost} EXP`);
+                this._upgrade2.html(`Upgrade Max HP<br>${this._upgrade2Cost} EXP`);
+                this._upgrade3.html(`Upgrade Weapon<br>${this._upgrade3Cost} EXP`);
+                this._upgradeMenu.removeClass("hidden2");
+                document.addEventListener("keydown", this._closeUpgradeMenu);
+            } else {
+                this.alertMessage("Anvil has broke");
+                this._anvil = null;
+            }
+        } else if (event.code === "ArrowLeft" || event.code === "ArrowRight"
+            || event.code === "ArrowUp" || event.code === "ArrowDown") {
+            this._alerts.html("");
+            document.removeEventListener('keydown', this._upgrade);
+        }
+    }
+    _closeUpgradeMenu() {
+        this._upgradeMenu.addClass("hidden2");
+        document.removeEventListener("keydown", this._closeUpgradeMenu);
+    }
+    _restoreHP() {
+        this._player.hp = this._player.maxHP;
+        this._playerHP.html(`HP: ${this._player.hp}`);
+        this.alertMessage("HP restored");
+        this._player.exp -= this._upgrade1Cost;
+        this._playerEXP.html(`EXP: ${this._player.exp}`);
+        this._upgrade1Cost *= 2;
+        this._closeUpgradeMenu();
+        this._anvil.hasBeenUsed = true;
+        this._anvil = null;
+    }
+    _upgradeMaxHP() {
+        if (this._player.exp < this._upgrade1Cost) {
+            this.alertMessage("Not enough EXP");
+            return;
+        }
+        this._player.upgrademaxHP(HP_INCREMENT_VAL);
+        this.alertMessage(`Player HP upgraded to ${this._player.maxHP}`);
+        this._player.exp -= this._upgrade2Cost;
+        this._playerEXP.html(`EXP: ${this._player.exp}`);
+        this._upgrade2Cost *= 2;
+        this._closeUpgradeMenu();
+        this._anvil.hasBeenUsed = true;
+        this._anvil = null;
+    }
+    _upgradeWeapon() {
+        if (this._player.exp < this._upgrade2Cost) {
+            this.alertMessage("Not enough EXP");
+            return;
+        }
+        this._openInventorySpaces(); // what
+        this.alertMessage("Select item to upgrade");
+        this._player.exp -= this._upgrade3Cost;
+        this._playerEXP.html(`EXP: ${this._player.exp}`);
+        this._upgrade3Cost *= 2;
+        this._closeUpgradeMenu();
+        this._anvil.hasBeenUsed = true;
+        this._anvil = null;
+    }
 }
 
 class Tile {
@@ -530,6 +656,16 @@ class Bed extends Tile {
     }
 }
 
+class Anvil extends Tile {
+    constructor() {
+        super(FORGE_POSITION.x, FORGE_POSITION.y, "a");
+        this.hasBeenUsed = false;
+    }
+    interact(player) {
+        player.game.tryUpgrade(this);
+    }
+}
+
 class Entity extends Tile {
     constructor(x, y, icon, hp, atk) {
         super(x, y, icon);
@@ -548,6 +684,7 @@ class Player extends Entity {
 
         this.equippedWeapon = null;
         this.equippedArmor = null;
+        this.maxHP = PLAYER_HP_START;
         this.hp = PLAYER_HP_START;
         this.baseAtk = PLAYER_ATK_START;
         this.baseDef = PLAYER_DEF_START;
@@ -558,7 +695,7 @@ class Player extends Entity {
         this.totalMelatonin = 0;
     }
     takeDamage(opp) {
-        let damageToTake = Math.floor(opp.atk * (1 / this.def));
+        let damageToTake = Math.ceil(opp.atk * (1 / this.def));
         this.hp -= damageToTake;
         return damageToTake;
     }
@@ -593,6 +730,9 @@ class Player extends Entity {
     sleep() {
         this.game.sleep();
     }
+    upgrade() {
+        this.game.upgrade();
+    }
     equipWeapon(id, weapon) {
         this.weapon = {
             key: id,
@@ -623,11 +763,17 @@ class Player extends Entity {
         this.buffedStrength = 0;
     }
     addHealth(healthToAdd) {
-        if (this.hp + healthToAdd > PLAYER_HP_START) {
-            this.hp = PLAYER_HP_START;
+        let addedHealth = healthToAdd;
+        if (this.hp + healthToAdd > this.maxHP) {
+            addedHealth = this.maxHP - this.hp;
+            this.hp = this.maxHP;
         } else {
             this.hp += healthToAdd;
         }
+        return addedHealth;
+    }
+    upgrademaxHP(toAdd) {
+        this.maxHP += toAdd;
     }
 }
 
@@ -642,8 +788,7 @@ class Inventory {
             5: null,
             6: null,
             7: null,
-            8: null,
-            9: null
+            8: null
         };
     }
     insert(item) {
@@ -748,9 +893,9 @@ class HealthPotion extends Potion {
         super(level, "health", map);
     }
     giveEffects(player) {
-        let healthAdded = HEALTH_POTION_START + Math.floor(Math.log(this._level));
-        this.message = `Gained ${healthAdded} health`;
-        player.addHealth(healthAdded);
+        let totalHealth = HEALTH_POTION_START + Math.floor(Math.log(this._level));
+        let addedHealth = player.addHealth(totalHealth);
+        this.message = `Gained ${addedHealth} health`;
     }
 }
 
@@ -1008,15 +1153,26 @@ class World extends Graph {
         }
         this.randomlyAddEdges();
         let bedroom = new Bedroom(this.size);
-        bedroom.generate();
         this.bedroom = bedroom;
         this.addVertex(bedroom);
+        let forge;
+        if (getRandomNumber(1, 3) === 1) {
+            forge = new Forge(this.size + 1);
+            this.forge = forge;
+            this.addVertex(forge);
+        }
         let randomVertex = this.getRandomVertex();
         if (this.size > 1) {
-            while (randomVertex === bedroom) {
+            while (randomVertex === bedroom || randomVertex === forge) {
                 randomVertex = this.getRandomVertex();
             }
             this.addEdge(bedroom, randomVertex);
+            if (forge) {
+                while (randomVertex === forge || randomVertex === forge) {
+                    randomVertex = this.getRandomVertex();
+                }
+                this.addEdge(forge, randomVertex);
+            }
         }
         this._populate();
     }
@@ -1062,12 +1218,12 @@ class World extends Graph {
                 if (randomMap.addItem(weapon) === true) {
                     itemsAdded += 1
                 }
-            // } else if (Math.random() > 0.666) {
-            //     material = this._generateMaterial(ARMOR_TYPES);
-            //     let armor = new Armor(randomMap, material);
-            //     if (randomMap.addItem(armor) === true) {
-            //         itemsAdded += 1
-            //     }
+            } else if (Math.random() > 0.666) {
+                material = this._generateMaterial(ARMOR_TYPES);
+                let armor = new Armor(randomMap, material);
+                if (randomMap.addItem(armor) === true) {
+                    itemsAdded += 1
+                }
             } else {
                 let potion;
                 if (getRandomNumber(0, 1) === 0) {
@@ -1108,8 +1264,8 @@ class World extends Graph {
         let enemiesAdded = 0;
         while (enemiesAdded < this._numEnemies) {
             let randomMap = this.getRandomVertex();
-            let hp = Math.floor(0.5 * this._weirdness + ENEMY_HP_START);
-            let atk = Math.floor(0.5 * this._weirdness + ENEMY_ATK_START);
+            let hp = this._weirdness + ENEMY_HP_START;
+            let atk = this._weirdness + ENEMY_ATK_START;
             let enemy = new Enemy(this._weirdness, randomMap, hp, atk);
             if (randomMap.addItem(enemy) === true) {
                 enemiesAdded += 1;
@@ -1191,7 +1347,7 @@ class Map extends Graph {
         return false;
     }
     _generateRooms() {
-        let numOfRooms = Math.floor(Math.random() * 5) + 3;
+        let numOfRooms = Math.floor(Math.random() * 5) + 5;
         for (let i = 0; i < numOfRooms; i++) {
             let room = new Room(i);
             let counter = 0;
@@ -1398,37 +1554,50 @@ class Map extends Graph {
     }
 }
 
-class Bedroom extends Map {
+class SpecialRoom extends Map {
     constructor(id) {
         super(id);
-        this._height = BEDROOM_HEIGHT;
-        this._width = BEDROOM_WIDTH;
-        this._isBedroom = true;
-        this.map = [
-            ["*", "*", "*", "*", "*", "*", "*", "*", "*", "*", "*"],
-            ["*", ".", ".", ".", ".", ".", ".", ".", ".", ".", "*"],
-            ["*", ".", ".", ".", ".", ".", ".", ".", ".", ".", "*"],
-            ["*", ".", ".", ".", ".", ".", ".", ".", ".", ".", "*"],
-            ["*", "*", "*", "*", "*", "*", "*", "*", "*", "*", "*"],
-        ];
-        this.generate();
+        this._height = SPECIAL_HEIGHT;
+        this._width = SPECIAL_WIDTH;
+        this._isSpecialRoom = true;
+        this.map = SPECIAL_MAP;
+        this._generate();
+        this._addObject();
     }
     drawDoor(door) {
-        door.x = BEDROOM_DOOR.x;
-        door.y = BEDROOM_DOOR.y;
+        door.x = SPECIAL_DOOR.x;
+        door.y = SPECIAL_DOOR.y;
         this.updateTile(door);
     }
-    generate() {
+    _generate() {
         for (let i = 0; i < this.map.length; i++) {
             for (let j = 0; j < this.map[0].length; j++) {
                 this.tiles[[j, i]] = new Tile(j, i, this.map[i][j]);
             }
         }
-        let bed = new Bed();
-        this.updateTile(bed);
     }
     addItem() {
         return false;
+    }
+}
+
+class Bedroom extends SpecialRoom {
+    constructor(id) {
+        super(id);
+    }
+    _addObject() {
+        let bed = new Bed();
+        this.updateTile(bed);
+    }
+}
+
+class Forge extends SpecialRoom {
+    constructor(id) {
+        super(id);
+    }
+    _addObject() {
+        let anvil = new Anvil();
+        this.updateTile(anvil);
     }
 }
 
