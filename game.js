@@ -52,6 +52,7 @@ const RARITY_BOUND = 0.1;
 const DEF_CONST = 0.25;
 
 const START_UPGRADE_COST = 1;
+const START_MARKET_COST = 5;
 
 const WEAPON_TYPES = {
     "wood": {
@@ -62,22 +63,35 @@ const WEAPON_TYPES = {
     "stone": {
         name: "stone",
         rarity: 3,
-        damage: 3
+        damage: 2
     },
     "iron": {
         name: "iron",
         rarity: 6,
-        damage: 6
+        damage: 3
     },
     "steel": {
         name: "steel",
         rarity: 9,
-        damage: 10
+        damage: 5
     },
     "diamond": {
         name: "diamond",
         rarity: 12,
-        damage: 15
+        damage: 7
+    }
+}
+
+const SPECIAL_WEAPON_TYPES = {
+    "poisoned": {
+        name: "poisoned",
+        rarity: null,
+        damage: 10
+    },
+    "flaming": {
+        name: "flaming",
+        rarity: null,
+        damage: 10
     }
 }
 
@@ -90,30 +104,186 @@ const ARMOR_TYPES = {
     "chainmail": {
         name: "chainmail",
         rarity: 3,
-        protection: 3
+        protection: 2
     },
     "iron": {
         name: "iron",
         rarity: 6,
-        protection: 6
+        protection: 3
     },
     "steel": {
         name: "steel",
         rarity: 9,
-        protection: 10
+        protection: 5
     },
     "diamond": {
         name: "diamond",
         rarity: 12,
-        protection: 15
+        protection: 7
     }
 }
 
 const WHITESPACE = "&nbsp;";
-// const WHITESPACE = "-";
+
+const ADJECTIVES = [
+    "quick",
+    "slimy",
+    "bright",
+    "spiky",
+    "melodic",
+    "rough",
+    "gentle",
+    "crispy",
+    "blurry",
+    "massive",
+    "tender",
+    "noisy",
+    "fragile",
+    "shiny",
+    "dull",
+    "spacious",
+    "ancient",
+    "muddy",
+    "fluffy",
+    "glossy"
+];
+
+const SWORD_OBJECTS = [
+    "baguette",
+    "pencil",
+    "ruler",
+    "stick",
+    "umbrella",
+    "feather",
+    "spatula",
+    "fishing rod",
+    "hockey stick",
+    "cello bow",
+    "giant needle",
+    "screwdriver",
+    "wand",
+    "antenna",
+    "flagpole",
+    "twig",
+    "golf club",
+    "baton",
+    "car antenna",
+    "bamboo shoot"
+];
+
+const ARMOR_OBJECTS = [
+    "kimono",
+    "culottes",
+    "bodysuit",
+    "poncho",
+    "sarong",
+    "leg warmers",
+    "turban",
+    "gaiters",
+    "caftan",
+    "jodhpurs",
+    "spats",
+    "stetson",
+    "ballet flats",
+    "cummerbund",
+    "espadrilles",
+    "feather boa",
+    "garter",
+    "harem pants",
+    "kilt",
+    "lederhosen"
+];
+
+const ENEMY_ADJECTIVES = [
+    'abrasive',
+    'belligerent',
+    'cantankerous',
+    'deceitful',
+    'envious',
+    'frivolous',
+    'gruesome',
+    'harsh',
+    'invasive',
+    'jealous',
+    'malicious',
+    'nefarious',
+    'obnoxious',
+    'pernicious',
+    'quarrelsome',
+    'ruthless',
+    'sordid',
+    'treacherous',
+    'vindictive',
+    'wicked'
+];
+
+const ENEMY_NOUNS = [
+    'armadillo',
+    'octopus',
+    'kangaroo',
+    'falcon',
+    'lemur',
+    'narwhal',
+    'platypus',
+    'quokka',
+    'axolotl',
+    'gibbon',
+    'sundial',
+    'kaleidoscope',
+    'abacus',
+    'sextant',
+    'hourglass',
+    'zither',
+    'quill',
+    'compass',
+    'wheel',
+    'telescope'
+];
+
+const UNICODE_CHARS = [
+    '\u2620', // ☠ Skull and Crossbones
+    '\u2764', // ❤ Heart
+    '\u263A', // ☺ Smiling Face
+    '\u265E', // ♞ Black Chess Knight
+    '\u2602', // ☂ Umbrella
+    '\u260E', // ☎ Black Telephone
+    '\u2615', // ☕ Hot Beverage
+    '\u262F', // ☯ Yin Yang
+    '\u263C', // ☼ White Sun with Rays
+    '\u266B', // ♫ Beamed Eighth Notes
+    '\u266A', // ♪ Eighth Note
+    '\u267F', // ♿ Wheelchair Symbol
+    '\u2693', // ⚓ Anchor
+    '\u26A1', // ⚡ High Voltage Sign
+    '\u0C85', // ಅ Kannada Letter A
+    '\u03E2', // Ϣ Coptic Capital Letter Shei
+    '\u1200', // ሀ Ethiopic Syllable Ha
+    '\uA000', // ꀀ Yi Syllable It
+    '\u16A0', // ᚠ Runic Letter Feoh Fehu Fe F
+    '\u2708'  // ✈ Airplane
+];
+
+
+
+function getRandomString(arr) {
+    let randomIndex = Math.floor(Math.random() * arr.length);
+    return arr[randomIndex];
+}
 
 function getRandomNumber(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function gaussianRandom() {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+
+    let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    return num;
+}
+
+function gaussian(mu) {
+    return Math.ceil(mu + gaussianRandom());
 }
 
 function logTransformation(x) {
@@ -147,6 +317,7 @@ class Game {
         this._tryOpenDoor = this._tryOpenDoor.bind(this);
         this._openInventory = this._openInventory.bind(this);
         this._closeUpgradeMenu = this._closeUpgradeMenu.bind(this);
+        this._completeUpgradeItem = this._completeUpgradeItem.bind(this);
         this._closeInventory = this._closeInventory.bind(this);
         this._displayItem = this._displayItem.bind(this);
         this._removeItem = this._removeItem.bind(this);
@@ -157,7 +328,13 @@ class Game {
 
         this._restoreHP = this._restoreHP.bind(this);
         this._upgradeMaxHP = this._upgradeMaxHP.bind(this);
-        this._upgradeWeapon = this._upgradeWeapon.bind(this);
+        this._upgradeItem = this._upgradeItem.bind(this);
+        this._openMarket = this._openMarket.bind(this);
+        this._closeMarket = this._closeMarket.bind(this);
+        this._sellItem = this._sellItem.bind(this);
+        this._selectSellItem = this._selectSellItem.bind(this);
+        this._completeSellItem = this._completeSellItem.bind(this);
+
 
         this.isInventoryOpen = false;
 
@@ -175,7 +352,11 @@ class Game {
 
         this._upgrade1.click(this._restoreHP);
         this._upgrade2.click(this._upgradeMaxHP);
-        this._upgrade3.click(this._upgradeWeapon);
+        this._upgrade3.click(this._upgradeItem);
+
+        $("#sell").click(this._sellItem);
+        $("#market1").click(this._buyHealthPotion);
+        $("#market2").click(this._buyStrengthPotion);
 
         this._keyCodes = {
             "ArrowLeft": [-1, 0],
@@ -194,6 +375,9 @@ class Game {
         this._upgrade1Cost = START_UPGRADE_COST;
         this._upgrade2Cost = START_UPGRADE_COST;
         this._upgrade3Cost = START_UPGRADE_COST;
+
+        this._market1Cost = START_MARKET_COST;
+        this._market2Cost = START_MARKET_COST;
     }
     _onStart(event) {
         event.preventDefault();
@@ -207,14 +391,12 @@ class Game {
         this._player = new Player(this);
         this._playerHP.html(`HP: ${this._player.hp}`);
         this._playerEXP.html(`EXP: ${this._player.exp}`);
+        $("#gold").html(`Gold: ${this._player.gold}`);
         this._equippedWeapon.html(`Weapon: none`);
         this._equippedArmor.html(`Armor: none`)
         this._createWorld();
     }
     _createWorld() {
-        // if (this._weirdness === 0) {
-        //     this._weirdness += 2;
-        // }
         this._weirdness += 1;
         this._level.html(`Level: ${this._weirdness}`);
         let numMelatonin;
@@ -240,8 +422,7 @@ class Game {
         this._drawMap();
         this._game.fadeIn("slow");
     }
-    _openInventory(event) {
-        event.preventDefault();
+    _openInventory() {
         this.isInventoryOpen = true;
         this.drawInventory();
         this._openInventorySpaces();
@@ -305,9 +486,10 @@ class Game {
             let direction = this._keyCodes[event.code];
             this._player.move(direction);
             this._currMap.moveEnemies(this._player);
+            this._currMap.moveRabbit();
             let neighbors = this._player.getNeighbors(this._currMap.tiles)
             for (let neighbor of neighbors) {
-                if (neighbor.icon === "E") {
+                if (neighbor instanceof Enemy) {
                     if (!this._attackingEnemy) {
                         this.alertMessage("Press SPACEBAR to attack");
                     }
@@ -335,11 +517,17 @@ class Game {
         this._playerHP.html(`HP: ${this._player.hp}`);
         if (event.code === 'Space') {
             let enemyDamage = this._attackingEnemy.takeDamage(this._player);
-            string = string.concat(`<br>Enemy took ${enemyDamage} damage; remaining ${this._attackingEnemy.hp}`);
+            string = string.concat(`<br>${this._attackingEnemy.name} took ${enemyDamage} damage; remaining ${this._attackingEnemy.hp}`);
             if (this._attackingEnemy.hp <= 0) {
-                this.alertMessage("Enemy died<br>Gained 1 EXP");
+                let alertString = `${this._attackingEnemy.name} died<br>Gained 1 EXP`;
                 this._player.exp += 1;
+                if (getRandomNumber(1, 5) === 1) { // todo clean up
+                    alertString = alertString.concat(" and 1 gold");
+                    this._player.gold += 1;
+                }
+                this.alertMessage(alertString);
                 this._playerEXP.html(`EXP: ${this._player.exp}`);
+                $("#gold").html(`Gold: ${this._player.gold}`);
                 this._currMap.replaceTile(this._attackingEnemy);
                 document.removeEventListener("keydown", this._attack);
                 this._attackingEnemy = null;
@@ -445,7 +633,7 @@ class Game {
         let inventorySpace = event.target;
         let id = event.target.id[5];
         let item = this._player.inventory.contents[id];
-        if (item) {
+        if (item) { // TODO clean up
             if (item.icon === "m") {
                 return;
             } else if (item.icon === "p") {
@@ -521,9 +709,10 @@ class Game {
         this.alertMessage(potion.message);
     }
     _gameOver() {
+        document.removeEventListener("keydown", this._playerMove);
         this._game.fadeOut("slow").promise().done(() => {
             let children = this._inventorySpaces.children();
-            children.each(function(index, child) {
+            children.each(function (index, child) {
                 $(child).removeClass("selected");
             });
             this._player.melatoninFound = 0;
@@ -533,25 +722,21 @@ class Game {
             document.removeEventListener("keydown", this._attack);
             this._loadGame();
             this.drawInventory();
+            document.addEventListener("keydown", this._playerMove);
         });
     }
     tryUpgrade(anvil) {
         this._anvil = anvil;
-        this._alertMessage("upgrade");
+        this.alertMessage("Press SPACEBAR to talk with the auspicious man");
         document.addEventListener("keydown", this._upgrade);
     }
     _upgrade(event) {
         if (event.code === 'Space') {
-            if (this._anvil.hasBeenUsed === false) {
-                this._upgrade1.html(`Restore HP<br>${this._upgrade1Cost} EXP`);
-                this._upgrade2.html(`Upgrade Max HP<br>${this._upgrade2Cost} EXP`);
-                this._upgrade3.html(`Upgrade Weapon<br>${this._upgrade3Cost} EXP`);
-                this._upgradeMenu.removeClass("hidden2");
-                document.addEventListener("keydown", this._closeUpgradeMenu);
-            } else {
-                this.alertMessage("Anvil has broke");
-                this._anvil = null;
-            }
+            this._upgrade1.html(`Restore HP<br>${this._upgrade1Cost} EXP`);
+            this._upgrade2.html(`Upgrade Max HP<br>${this._upgrade2Cost} EXP`);
+            this._upgrade3.html(`Upgrade Weapon<br>${this._upgrade3Cost} EXP`);
+            this._upgradeMenu.removeClass("hidden2");
+            document.addEventListener("keydown", this._closeUpgradeMenu);
         } else if (event.code === "ArrowLeft" || event.code === "ArrowRight"
             || event.code === "ArrowUp" || event.code === "ArrowDown") {
             this._alerts.html("");
@@ -570,7 +755,6 @@ class Game {
         this._playerEXP.html(`EXP: ${this._player.exp}`);
         this._upgrade1Cost *= 2;
         this._closeUpgradeMenu();
-        this._anvil.hasBeenUsed = true;
         this._anvil = null;
     }
     _upgradeMaxHP() {
@@ -584,23 +768,103 @@ class Game {
         this._playerEXP.html(`EXP: ${this._player.exp}`);
         this._upgrade2Cost *= 2;
         this._closeUpgradeMenu();
-        this._anvil.hasBeenUsed = true;
         this._anvil = null;
     }
-    _upgradeWeapon() {
-        if (this._player.exp < this._upgrade2Cost) {
+    _upgradeItem() {
+        if (this._player.exp < this._upgrade3Cost) {
             this.alertMessage("Not enough EXP");
             return;
         }
-        this._openInventorySpaces(); // what
+        this._openInventory();
         this.alertMessage("Select item to upgrade");
-        this._player.exp -= this._upgrade3Cost;
-        this._playerEXP.html(`EXP: ${this._player.exp}`);
-        this._upgrade3Cost *= 2;
-        this._closeUpgradeMenu();
-        this._anvil.hasBeenUsed = true;
-        this._anvil = null;
+        for (let space of this._inventorySpaces.children()) {
+            space.removeEventListener("click", this._equipItem);
+            space.addEventListener("click", this._completeUpgradeItem);
+        }
     }
+    _completeUpgradeItem(event) {
+        let id = event.target.id[5];
+        let item = this._player.inventory.contents[id];
+        if (item) {
+            if (item.upgrade() !== false) {
+                this.alertMessage(`${item.name} upgraded`);
+                this._player.exp -= this._upgrade3Cost;
+                this._playerEXP.html(`EXP: ${this._player.exp}`);
+                this._upgrade3Cost *= 2;
+                for (let space of this._inventorySpaces.children()) {
+                    space.removeEventListener("click", this._completeUpgradeItem);
+                    space.addEventListener("click", this._equipItem);
+                }
+            } else {
+                this.alertMessage("Cannot upgrade item");
+            }
+        }
+    }
+    tryOpenMarket(event) {
+        this.alertMessage("Press SPACEBAR to catch the white rabbit");
+        document.addEventListener("keydown", this._openMarket);
+    }
+    _openMarket(event) {
+        event.preventDefault();
+        if (event.code === "Space") {
+            $("#marketMenu").removeClass("hidden2");
+            $("#market1").html(`Buy Health Potion<br>${this._market1Cost} Gold`);
+            $("#market2").html(`Buy Strength Potion<br>${this._market2Cost} Gold`);
+            document.addEventListener("keydown", this._closeMarket);
+        }
+    }
+    _closeMarket(event) {
+        if (event.code === "ArrowLeft" || event.code === "ArrowRight"
+            || event.code === "ArrowUp" || event.code === "ArrowDown") {
+            $("#marketMenu").addClass("hidden2");
+            document.removeEventListener("keydown", this._closeMarket);
+            document.removeEventListener("keydown", this._openMarket);
+        }
+    }
+    _sellItem() {
+        this._openInventory();
+        this.alertMessage("Select item to sell");
+        for (let space of this._inventorySpaces.children()) {
+            space.removeEventListener("click", this._equipItem);
+            space.addEventListener("click", this._selectSellItem);
+        }
+    }
+    _selectSellItem(event) {
+        let id = event.target.id[5];
+        let item = this._player.inventory.contents[id];
+        if (item) {
+            item.worth = 0;
+            if (item.icon === 'p') {
+                item.worth = 3; // todo define const
+            } else {
+                item.worth = item.material.rarity + item.level;
+            }
+            this.alertMessage(`Press SPACEBAR to sell ${item.name} for ${item.worth} gold?`);
+            this._itemToSell = item;
+            document.addEventListener("keydown", this._completeSellItem);
+        }
+    }
+    _completeSellItem() {
+        let item = this._itemToSell;
+        this.alertMessage(`Sold ${item.name} for ${item.worth} gold`);
+        this._player.gold += item.worth;
+        $("#gold").html(`Gold: ${this._player.gold}`);
+        this._player.inventory.remove(item.id);
+        this._openInventory();
+        for (let space of this._inventorySpaces.children()) {
+            space.removeEventListener("click", this._selectSellItem);
+            space.addEventListener("click", this._equipItem);
+        }
+        document.removeEventListener("keydown", this._completeSellItem);
+    }
+}
+
+class UpgradeMenu {
+
+}
+
+class MarketMenu {
+
 }
 
 class Tile {
@@ -659,7 +923,6 @@ class Bed extends Tile {
 class Anvil extends Tile {
     constructor() {
         super(FORGE_POSITION.x, FORGE_POSITION.y, "a");
-        this.hasBeenUsed = false;
     }
     interact(player) {
         player.game.tryUpgrade(this);
@@ -689,6 +952,7 @@ class Player extends Entity {
         this.baseAtk = PLAYER_ATK_START;
         this.baseDef = PLAYER_DEF_START;
         this.exp = 0;
+        this.gold = 0;
         this.def = 1;
 
         this.melatoninFound = 0;
@@ -738,7 +1002,7 @@ class Player extends Entity {
             key: id,
             val: weapon
         };
-        this.atk = this.baseAtk + this.weapon.val.material.damage;
+        this.atk = this.baseAtk + this.weapon.val.damage;
     }
     equipArmor(id, armor) {
         this.armor = {
@@ -775,6 +1039,9 @@ class Player extends Entity {
     upgrademaxHP(toAdd) {
         this.maxHP += toAdd;
     }
+    talkWithRabbit(rabbit) {
+        this.game.tryOpenMarket();
+    }
 }
 
 class Inventory {
@@ -795,6 +1062,7 @@ class Inventory {
         for (let key of Object.keys(this.contents)) {
             if (!this.contents[key]) {
                 this.contents[key] = item;
+                item.id = key;
                 return true;
             }
         }
@@ -816,6 +1084,7 @@ class Inventory {
 class Item extends Tile {
     constructor(map) {
         super(null, null, null);
+        this.level = 1;
         this._map = map;
         this._attribs = [];
     }
@@ -851,10 +1120,15 @@ class Weapon extends Item {
         super(map);
         this.icon = "w";
         this.material = material;
-        this.name = `${this.material.name} sword`;
+        this.damage = gaussian(this.material.damage);
+        this.name = `${getRandomString(ADJECTIVES)} ${this.material.name} ${getRandomString(SWORD_OBJECTS)}`;
     }
     addAttribute() {
         //TODO
+    }
+    upgrade() {
+        this.level += 1;
+        this.damage += 1;
     }
 }
 
@@ -863,7 +1137,11 @@ class Armor extends Item {
         super(map);
         this.icon = "a";
         this.material = material;
-        this.name = `${this.material.name} armor`;
+        this.protection = gaussian(this.material.protection);
+        this.name = `${getRandomString(ADJECTIVES)} ${this.material.name} ${getRandomString(ARMOR_OBJECTS)}`;
+    }
+    upgrade() {
+        this.protection += 1;
     }
 }
 
@@ -875,6 +1153,9 @@ class Potion extends Item {
         this.type = type;
         this.name = `${this.type} potion`;
     }
+    upgrade() {
+        return false;
+    }
 }
 
 class StrengthPotion extends Potion {
@@ -882,7 +1163,7 @@ class StrengthPotion extends Potion {
         super(level, "strength", map);
     }
     giveEffects(player) {
-        let strengthAdded = 1 + Math.floor(Math.log(this._level));
+        let strengthAdded = 1 + this._level;
         this.message = `Gained ${strengthAdded} strength for 20 turns`;
         player.addStrength(strengthAdded);
     }
@@ -893,7 +1174,7 @@ class HealthPotion extends Potion {
         super(level, "health", map);
     }
     giveEffects(player) {
-        let totalHealth = HEALTH_POTION_START + Math.floor(Math.log(this._level));
+        let totalHealth = HEALTH_POTION_START + this._level;
         let addedHealth = player.addHealth(totalHealth);
         this.message = `Gained ${addedHealth} health`;
     }
@@ -901,12 +1182,13 @@ class HealthPotion extends Potion {
 
 class Enemy extends Entity {
     constructor(level, map, hp, atk, def) {
-        super(null, null, "E");
+        super(null, null, getRandomString(UNICODE_CHARS));
         this._level = level;
         this._map = map;
         this.hp = hp;
         this.atk = atk;
         this.def = def;
+        this.name = `${getRandomString(ENEMY_ADJECTIVES)} ${getRandomString(ENEMY_NOUNS)}`
     }
     takeDamage(opp) {
         this.hp -= opp.atk;
@@ -971,7 +1253,34 @@ class Enemy extends Entity {
                 }
             }
         }
-        return null; // No path found
+        return null;
+    }
+}
+
+class WhiteRabbit extends Entity {
+    constructor(map, lifespan) {
+        super(null, null, "r");
+        this.map = map;
+        this.life = 0;
+        this.lifespan = 12;
+    }
+    move() {
+        if (getRandomNumber(1, 2) === 1) {
+            return;
+        }
+        let neighbors = this.getNeighbors(this.map.tiles);
+        let randomNeighbor = neighbors[Math.floor(Math.random() * 4)];
+        while (!this.map.isOpenTile(randomNeighbor.x, randomNeighbor.y)) {
+            randomNeighbor = neighbors[Math.floor(Math.random() * 4)];
+        }
+        this.x = randomNeighbor.x;
+        this.y = randomNeighbor.y;
+    }
+    die() {
+        this.map.replaceTile(this);
+    }
+    interact(player) {
+        player.talkWithRabbit(this);
     }
 }
 
@@ -1068,12 +1377,6 @@ class Graph {
         this.adjacencyList[vertex1.id].push(vertex2.id);
         this.adjacencyList[vertex2.id].push(vertex1.id);
     }
-    printGraph() {
-        for (let vertex of Object.keys(this.vertices)) {
-            let neighbors = this.adjacencyList[vertex].join(", ");
-            console.log(`${vertex} -> ${neighbors}`);
-        }
-    }
     removeAllVertices() {
         this.vertices = {};
         this.adjacencyList = {};
@@ -1135,9 +1438,9 @@ class World extends Graph {
     constructor(size, numMelatonin, numItems, numEnemies, weirdness) {
         super();
         this.size = size;
-        this.bedroom = null;
+        this.bedroom = null; getRandomNumber(1, 1) === 1
         this.numMelatonin = numMelatonin;
-        this._numItems = numItems;
+        this._numItems =numItems;
         this._numEnemies = numEnemies;
         this._weirdness = weirdness;
         this.melatonin = [];
@@ -1181,6 +1484,9 @@ class World extends Graph {
         this._addMelatonin();
         this._addItems();
         this._addEnemies();
+        if (getRandomNumber(1, 1) === 1 && this._weirdness > 0) {
+            this._addRabbit();
+        }
     }
     _addDoors() {
         if (this.size === 1) {
@@ -1258,7 +1564,8 @@ class World extends Graph {
         }
     }
     _generateChance(material) {
-        return Math.E ** (-((this._weirdness - material.rarity) ** 2));
+        if (this._weirdness === 0) return;
+        return Math.exp(-((this._weirdness - material.rarity) ** 2) / (10 * this._weirdness)) * Math.pow(0.5, this._weirdness) * this._weirdness;
     }
     _addEnemies() {
         let enemiesAdded = 0;
@@ -1270,6 +1577,13 @@ class World extends Graph {
             if (randomMap.addItem(enemy) === true) {
                 enemiesAdded += 1;
             }
+        }
+    }
+    _addRabbit() {
+        let randomMap = this.getRandomVertex();
+        let rabbit = new WhiteRabbit(randomMap, 10);
+        while (rabbit.map.addItem(rabbit) === false) {
+            rabbit.map = this.getRandomVertex();
         }
     }
 }
@@ -1507,12 +1821,30 @@ class Map extends Graph {
         return false;
     }
     moveEnemies(player) {
-        let enemies = Object.keys(this.tiles).filter(key => this.tiles[key].icon === "E");
+        let enemies = Object.keys(this.tiles).filter(key => this.tiles[key] instanceof Enemy);
         for (let key of enemies) {
             let enemy = this.tiles[key];
             this.replaceTile(enemy);
             enemy.move(player);
             this.updateTile(enemy);
+        }
+    }
+    moveRabbit() {
+        let rabbit = null;
+        for (let key in this.tiles) {
+            let tile = this.tiles[key];
+            if (tile.icon === 'r') {
+                rabbit = tile;
+            }
+        }
+        if (rabbit !== null) {
+            this.replaceTile(rabbit);
+            rabbit.move();
+            this.updateTile(rabbit);
+            rabbit.life += 1;
+            if (rabbit.life === rabbit.lifespan) {
+                rabbit.die();
+            }
         }
     }
     getTile(x, y) {

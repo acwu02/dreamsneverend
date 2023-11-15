@@ -133,7 +133,7 @@ h4 {
     margin: 5px;
 }
 
-#upgradeMenu {
+#upgradeMenu, #marketMenu {
     justify-content: center;
     height: 10%;
 }
