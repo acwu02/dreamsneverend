@@ -313,7 +313,6 @@ class Game {
         this._playerEXP = $("#exp");
         this._equippedWeapon = $("#weapon");
         this._equippedArmor = $("#armor");
-        // this._upgradeMenu = $("#upgradeMenu");
 
         this._onStart = this._onStart.bind(this);
         this._loadGame = this._loadGame.bind(this);
@@ -604,11 +603,11 @@ class InventoryMenu extends Menu {
         this.isOpen = false;
         this.open = this.open.bind(this);
         this.close = this.close.bind(this);
-        this.equipItem = this.equipItem.bind(this);
+        this.useItem = this.useItem.bind(this);
         this._displayItem = this._displayItem.bind(this);
         $("#inventoryButton").click(this.open);
         for (let space of $("#inventorySpaces").children()) {
-            space.addEventListener("click", this.equipItem);
+            space.addEventListener("click", this.useItem);
         }
     }
     open() {
@@ -636,44 +635,36 @@ class InventoryMenu extends Menu {
         $("#inventoryButton").click(this.open);
     }
     _displayItem(event) {
-        event.preventDefault();
+        // event.preventDefault();
         let slot = event.target;
         let id = slot.id[5];
         let item = this._player.inventory.contents[id];
-        if (item) { // TODO clean up
-            if (item.icon === "m") {
-                $("#selectedItem").html("melatonin");
-            } else if (item.icon === "p") {
-                $("#selectedItem").html(`${item.name} LCLICK to drink`);
-            } else {
-                if (slot.classList.contains("selected")) {
-                    $("#selectedItem").html(`${item.name} Equipped`);
-                } else {
-                    $("#selectedItem").html(`${item.name} LCLICK to equip`);
-                }
-            }
+        if (item) {
+            item.display();
         }
     }
-    equipItem(event) {
+    useItem(event) {
         let inventorySpace = event.target;
         let id = event.target.id[5];
         let item = this._player.inventory.contents[id];
         if (item) { // TODO clean up
-            if (item.icon === "m") {
-                return;
-            } else if (item.icon === "p") {
-                this._drinkPotion(id, item);
-            } else {
-                if (item.icon === "w") {
-                    this._equipWeapon(id, item);
+            item.use(this._player);
 
-                } else if (item.icon === "a") {
-                    this._equipArmor(id, item);
-                }
-                item.isEquipped = true;
-                this.alertMessage(`Equipped ${item.name}`);
-                inventorySpace.classList.add("selected");
-            }
+            // if (item.icon === "m") {
+            //     return;
+            // } else if (item.icon === "p") {
+            //     this._drinkPotion(id, item);
+            // } else {
+            //     if (item.icon === "w") {
+            //         this._equipWeapon(id, item);
+
+            //     } else if (item.icon === "a") {
+            //         this._equipArmor(id, item);
+            //     }
+            //     item.isEquipped = true;
+            //     this.alertMessage(`Equipped ${item.name}`);
+            //     inventorySpace.classList.add("selected");
+            // }
         }
     }
     _drinkPotion(id, potion) {
@@ -786,7 +777,7 @@ class UpgradeMenu extends Menu {
         this.inventoryMenu.open();
         this.alertMessage("Select item to upgrade");
         for (let space of $("#inventorySpaces").children()) {
-            space.removeEventListener("click", this.inventoryMenu.equipItem);
+            space.removeEventListener("click", this.inventoryMenu.useItem);
             space.addEventListener("click", this._completeUpgradeItem);
         }
     }
@@ -801,7 +792,7 @@ class UpgradeMenu extends Menu {
                 this._upgrade3Cost *= 2;
                 for (let space of $("#inventorySpaces").children()) {
                     space.removeEventListener("click", this._completeUpgradeItem);
-                    space.addEventListener("click", this.inventoryMenu.equipItem);
+                    space.addEventListener("click", this.inventoryMenu.useItem);
                 }
             } else {
                 this.alertMessage("Cannot upgrade item");
@@ -846,7 +837,7 @@ class MarketMenu extends Menu {
         this.inventoryMenu.open();
         this.alertMessage("Select item to sell");
         for (let space of $("#inventorySpaces").children()) {
-            space.removeEventListener("click", this.inventoryMenu.equipItem);
+            space.removeEventListener("click", this.inventoryMenu.useItem);
             space.addEventListener("click", this._selectSellItem);
         }
     }
@@ -874,7 +865,7 @@ class MarketMenu extends Menu {
         this._openInventory();
         for (let space of this._inventorySpaces.children()) {
             space.removeEventListener("click", this._selectSellItem);
-            space.addEventListener("click", this.inventoryMenu.equipItem);
+            space.addEventListener("click", this.inventoryMenu.useItem);
         }
         document.removeEventListener("keydown", this._completeSellItem);
     }
@@ -1081,7 +1072,6 @@ class Inventory {
         }
         return false;
     }
-    // TODO
     remove(id) {
         this.contents[id] = null;
     }
@@ -1135,6 +1125,7 @@ class Weapon extends Item {
         this.material = material;
         this.damage = gaussian(this.material.damage);
         this.name = `${getRandomString(ADJECTIVES)} ${this.material.name} ${getRandomString(SWORD_OBJECTS)}`;
+        this.isEquipped = false;
     }
     addAttribute() {
         //TODO
@@ -1142,6 +1133,18 @@ class Weapon extends Item {
     upgrade() {
         this.level += 1;
         this.damage += 1;
+    }
+    display() {
+        let string = `${this.name}<br>`;
+        if (this.isEquipped) {
+            string += "Equipped";
+        } else {
+            string += "LCLICK to equip";
+        }
+        $("#selectedItem").html(string);
+    }
+    use(player) {
+        player.equipWeapon();
     }
 }
 
@@ -1152,9 +1155,22 @@ class Armor extends Item {
         this.material = material;
         this.protection = gaussian(this.material.protection);
         this.name = `${getRandomString(ADJECTIVES)} ${this.material.name} ${getRandomString(ARMOR_OBJECTS)}`;
+        this.isEquipped = false;
     }
     upgrade() {
         this.protection += 1;
+    }
+    display() {
+        let string = `${this.name}<br>`;
+        if (this.isEquipped) {
+            string += "Equipped";
+        } else {
+            string += "LCLICK to equip";
+        }
+        $("#selectedItem").html(string);
+    }
+    use(player) {
+        player.equipArmor();
     }
 }
 
@@ -1168,6 +1184,13 @@ class Potion extends Item {
     }
     upgrade() {
         return false;
+    }
+    display() {
+        let string = `${this.name}<br>LCLICK to drink`;
+        $("#selectedItem").html(string);
+    }
+    use(player) {
+        this.giveEffects(player);
     }
 }
 
