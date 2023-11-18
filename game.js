@@ -1,5 +1,3 @@
-const BRUH = "Lorem ipsum dolor";
-
 const MAP_WIDTH = 20;
 const MAP_HEIGHT = 20;
 
