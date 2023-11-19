@@ -626,23 +626,23 @@ class InventoryMenu extends Menu {
         let id = event.target.id[5];
         let item = this._player.inventory.contents[id];
         if (item) { // TODO clean up
-            item.use(this._player);
+            // item.use(this._player);
 
-            // if (item.icon === "m") {
-            //     return;
-            // } else if (item.icon === "p") {
-            //     this._drinkPotion(id, item);
-            // } else {
-            //     if (item.icon === "w") {
-            //         this._equipWeapon(id, item);
+            if (item.icon === "m") {
+                return;
+            } else if (item.icon === "p") {
+                this._drinkPotion(id, item);
+            } else {
+                if (item.icon === "w") {
+                    this._equipWeapon(id, item);
 
-            //     } else if (item.icon === "a") {
-            //         this._equipArmor(id, item);
-            //     }
-            //     item.isEquipped = true;
-            //     this.alertMessage(`Equipped ${item.name}`);
-            //     inventorySpace.classList.add("selected");
-            // }
+                } else if (item.icon === "a") {
+                    this._equipArmor(id, item);
+                }
+                item.isEquipped = true;
+                this.alertMessage(`Equipped ${item.name}`);
+                inventorySpace.classList.add("selected");
+            }
         }
     }
     _drinkPotion(id, potion) {
