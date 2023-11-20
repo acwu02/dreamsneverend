@@ -927,7 +927,7 @@ class Player extends Entity {
         this.totalMelatonin = 0;
     }
     takeDamage(opp) {
-        let damageToTake = Math.floor(opp.atk);
+        let damageToTake = Math.ceil(opp.atk);
         this.hp -= damageToTake;
         return damageToTake;
     }
@@ -1207,7 +1207,7 @@ class Enemy extends Entity {
         this.name = `${getRandomString(ENEMY_ADJECTIVES)} ${getRandomString(ENEMY_NOUNS)}`
     }
     takeDamage(opp) {
-        let damageToTake = Math.floor(opp.atk);
+        let damageToTake = Math.ceil(opp.atk);
         if (opp.weapon) {
             damageToTake += opp.weapon.damage;
         }
