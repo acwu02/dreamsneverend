@@ -627,6 +627,7 @@ class InventoryMenu extends Menu {
         let item = this._player.inventory.contents[id];
         if (item) { // TODO clean up
             item.use(this._player);
+            this.open();
         }
     }
     _drinkPotion(id, potion) {
@@ -963,22 +964,24 @@ class Player extends Entity {
     upgrade() {
         this.game.upgrade();
     }
-    equipWeapon(id, weapon) {
+    equipWeapon(weapon) {
         this.weapon = {
-            key: id,
+            key: weapon.id,
             val: weapon
         };
         this.atk = this.baseAtk + this.weapon.val.damage;
-    }
-    equipArmor(id, armor) {
+    equipArmor(armor) {
         this.armor = {
-            key: id,
+            key: armor.id,
             val: armor
         };
         this.def = this.baseDef + this.armor.val.material.protection;
     }
     drinkPotion(potion) {
+        this.inventory.remove(potion.id);
         potion.giveEffects(this);
+        $("#hp").html(`HP: ${this._player.hp}`);
+        this.alertMessage(potion.message);
     }
     addStrength(strengthToAdd) {
         this.buffTurnsRemaining = 20;
@@ -1050,6 +1053,7 @@ class Item extends Tile {
     constructor(map) {
         super(null, null, null);
         this.level = 1;
+        this.id = null;
         this._map = map;
         this._attribs = [];
     }
@@ -1106,7 +1110,7 @@ class Weapon extends Item {
         $("#selectedItem").html(string);
     }
     use(player) {
-        player.equipWeapon();
+        player.equipWeapon(this);
     }
 }
 
@@ -1132,7 +1136,7 @@ class Armor extends Item {
         $("#selectedItem").html(string);
     }
     use(player) {
-        player.equipArmor();
+        player.equipArmor(this);
     }
 }
 
