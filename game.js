@@ -626,8 +626,7 @@ class InventoryMenu extends Menu {
         let id = event.target.id[5];
         let item = this._player.inventory.contents[id];
         if (item) { // TODO clean up
-            // item.use(this._player);
-
+            item.use(this._player);
             this.open();
         }
     }
@@ -638,34 +637,6 @@ class InventoryMenu extends Menu {
         $("#hp").html(`HP: ${this._player.hp}`);
         this.alertMessage(potion.message);
     }
-    // _equipWeapon(id, weapon) {
-    //     this._player.equipWeapon(id, weapon);
-    //     if (this._player.weapon) {
-    //         let oldKey = this._player.weapon.key;
-    //         let oldSpace = $(`#space${oldKey}`);
-    //         oldSpace.removeClass("selected");
-    //     }
-    //     this._player.weapon = {
-    //         key: id,
-    //         val: weapon,
-    //     };
-    //     $("#selectedItem").html(`${weapon.name} Equipped`);
-    //     $("#weapon").html(`Weapon: ${weapon.name}`);
-    // }
-    // _equipArmor(id, armor) {
-    //     this._player.equipArmor(id, armor);
-    //     if (this._player.armor) {
-    //         let oldKey = this._player.armor.key;
-    //         let oldSpace = $(`#space${oldKey}`);
-    //         oldSpace.removeClass("selected");
-    //     }
-    //     this._player.armor = {
-    //         key: id,
-    //         val: armor,
-    //     };
-    //     $("#selectedItem").html(`${armor.name} Equipped`);
-    //     $("#armor").html(`Armor: ${armor.name}`);
-    // }
     _removeItem() {
         $("#selectedItem").html("");
     }
