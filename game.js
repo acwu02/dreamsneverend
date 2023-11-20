@@ -787,6 +787,8 @@ class MarketMenu extends Menu {
             $("#market1").html(`Buy Health Potion<br>${this._market1Cost} Gold`);
             $("#market2").html(`Buy Strength Potion<br>${this._market2Cost} Gold`);
             document.addEventListener("keydown", this.close);
+        } else {
+            document.removeEventListener("keydown", this.open);
         }
     }
     close(event) {
