@@ -970,6 +970,7 @@ class Player extends Entity {
             val: weapon
         };
         this.atk = this.baseAtk + this.weapon.val.damage;
+    }
     equipArmor(armor) {
         this.armor = {
             key: armor.id,
