@@ -628,21 +628,7 @@ class InventoryMenu extends Menu {
         if (item) { // TODO clean up
             // item.use(this._player);
 
-            if (item.icon === "m") {
-                return;
-            } else if (item.icon === "p") {
-                this._drinkPotion(id, item);
-            } else {
-                if (item.icon === "w") {
-                    this._equipWeapon(id, item);
-
-                } else if (item.icon === "a") {
-                    this._equipArmor(id, item);
-                }
-                item.isEquipped = true;
-                this.alertMessage(`Equipped ${item.name}`);
-                inventorySpace.classList.add("selected");
-            }
+            this.open();
         }
     }
     _drinkPotion(id, potion) {
@@ -652,34 +638,34 @@ class InventoryMenu extends Menu {
         $("#hp").html(`HP: ${this._player.hp}`);
         this.alertMessage(potion.message);
     }
-    _equipWeapon(id, weapon) {
-        this._player.equipWeapon(id, weapon);
-        if (this._player.equippedWeapon) {
-            let oldKey = this._player.equippedWeapon.key;
-            let oldSpace = $(`#space${oldKey}`);
-            oldSpace.removeClass("selected");
-        }
-        this._player.equippedWeapon = {
-            key: id,
-            val: weapon,
-        };
-        $("#selectedItem").html(`${weapon.name} Equipped`);
-        $("#weapon").html(`Weapon: ${weapon.name}`);
-    }
-    _equipArmor(id, armor) {
-        this._player.equipArmor(id, armor);
-        if (this._player.equippedArmor) {
-            let oldKey = this._player.equippedArmor.key;
-            let oldSpace = $(`#space${oldKey}`);
-            oldSpace.removeClass("selected");
-        }
-        this._player.equippedArmor = {
-            key: id,
-            val: armor,
-        };
-        $("#selectedItem").html(`${armor.name} Equipped`);
-        $("#armor").html(`Armor: ${armor.name}`);
-    }
+    // _equipWeapon(id, weapon) {
+    //     this._player.equipWeapon(id, weapon);
+    //     if (this._player.weapon) {
+    //         let oldKey = this._player.weapon.key;
+    //         let oldSpace = $(`#space${oldKey}`);
+    //         oldSpace.removeClass("selected");
+    //     }
+    //     this._player.weapon = {
+    //         key: id,
+    //         val: weapon,
+    //     };
+    //     $("#selectedItem").html(`${weapon.name} Equipped`);
+    //     $("#weapon").html(`Weapon: ${weapon.name}`);
+    // }
+    // _equipArmor(id, armor) {
+    //     this._player.equipArmor(id, armor);
+    //     if (this._player.armor) {
+    //         let oldKey = this._player.armor.key;
+    //         let oldSpace = $(`#space${oldKey}`);
+    //         oldSpace.removeClass("selected");
+    //     }
+    //     this._player.armor = {
+    //         key: id,
+    //         val: armor,
+    //     };
+    //     $("#selectedItem").html(`${armor.name} Equipped`);
+    //     $("#armor").html(`Armor: ${armor.name}`);
+    // }
     _removeItem() {
         $("#selectedItem").html("");
     }
@@ -801,6 +787,8 @@ class MarketMenu extends Menu {
             $("#market1").html(`Buy Health Potion<br>${this._market1Cost} Gold`);
             $("#market2").html(`Buy Strength Potion<br>${this._market2Cost} Gold`);
             document.addEventListener("keydown", this.close);
+        } else {
+            document.removeEventListener("keydown", this.open);
         }
     }
     close(event) {
@@ -927,8 +915,8 @@ class Player extends Entity {
         this.oldPos = [-1, -1];
         this.map = null;
 
-        this.equippedWeapon = null;
-        this.equippedArmor = null;
+        this.weapon = null;
+        this.armor = null;
         this.maxHP = PLAYER_HP_START;
         this.hp = PLAYER_HP_START;
         this.baseAtk = PLAYER_ATK_START;
@@ -941,7 +929,7 @@ class Player extends Entity {
         this.totalMelatonin = 0;
     }
     takeDamage(opp) {
-        let damageToTake = Math.ceil(opp.atk * (1 / this.def));
+        let damageToTake = Math.ceil(opp.atk);
         this.hp -= damageToTake;
         return damageToTake;
     }
@@ -979,22 +967,37 @@ class Player extends Entity {
     upgrade() {
         this.game.upgrade();
     }
-    equipWeapon(id, weapon) {
-        this.weapon = {
-            key: id,
-            val: weapon
-        };
-        this.atk = this.baseAtk + this.weapon.val.damage;
+    equipWeapon(weapon) {
+        if (this.weapon) {
+            let oldKey = this.weapon.id;
+            let oldSpace = $(`#space${oldKey}`);
+            oldSpace.removeClass("selected");
+            this.weapon.isEquipped = false;
+        }
+        this.weapon = weapon;
+        this.weapon.isEquipped = true;
+        $("#selectedItem").html(`${weapon.name} Equipped`);
+        $("#weapon").html(`Weapon: ${weapon.name}`);
+        $(`#space${weapon.id}`).addClass("selected");
     }
-    equipArmor(id, armor) {
-        this.armor = {
-            key: id,
-            val: armor
-        };
-        this.def = this.baseDef + this.armor.val.material.protection;
+    equipArmor(armor) {
+        if (this.armor) {
+            let oldKey = this.armor.id;
+            let oldSpace = $(`#space${oldKey}`);
+            oldSpace.removeClass("selected");
+            this.armor.isEquipped = false;
+        }
+        this.armor = armor;
+        this.armor.isEquipped = true;
+        $("#selectedItem").html(`${armor.name} Equipped`);
+        $("#armor").html(`Armor: ${armor.name}`);
+        $(`#space${armor.id}`).addClass("selected");
     }
     drinkPotion(potion) {
+        this.inventory.remove(potion.id);
         potion.giveEffects(this);
+        $("#hp").html(`HP: ${this._player.hp}`);
+        this.alertMessage(potion.message);
     }
     addStrength(strengthToAdd) {
         this.buffTurnsRemaining = 20;
@@ -1066,6 +1069,7 @@ class Item extends Tile {
     constructor(map) {
         super(null, null, null);
         this.level = 1;
+        this.id = null;
         this._map = map;
         this._attribs = [];
     }
@@ -1122,7 +1126,7 @@ class Weapon extends Item {
         $("#selectedItem").html(string);
     }
     use(player) {
-        player.equipWeapon();
+        player.equipWeapon(this);
     }
 }
 
@@ -1148,7 +1152,7 @@ class Armor extends Item {
         $("#selectedItem").html(string);
     }
     use(player) {
-        player.equipArmor();
+        player.equipArmor(this);
     }
 }
 
@@ -1205,8 +1209,12 @@ class Enemy extends Entity {
         this.name = `${getRandomString(ENEMY_ADJECTIVES)} ${getRandomString(ENEMY_NOUNS)}`
     }
     takeDamage(opp) {
-        this.hp -= opp.atk;
-        return opp.atk;
+        let damageToTake = Math.ceil(opp.atk);
+        if (opp.weapon) {
+            damageToTake += opp.weapon.damage;
+        }
+        this.hp -= damageToTake;
+        return damageToTake;
     }
     move(dest) {
         let path = this._aStar(dest);
