@@ -967,28 +967,26 @@ class Player extends Entity {
     }
     equipWeapon(weapon) {
         if (this.weapon) {
-            let oldKey = this.weapon.key;
+            let oldKey = this.weapon.id;
             let oldSpace = $(`#space${oldKey}`);
             oldSpace.removeClass("selected");
+            this.weapon.isEquipped = false;
         }
-        this.weapon = {
-            key: weapon.id,
-            val: weapon
-        };
+        this.weapon = weapon;
+        this.weapon.isEquipped = true;
         $("#selectedItem").html(`${weapon.name} Equipped`);
         $("#weapon").html(`Weapon: ${weapon.name}`);
         $(`#space${weapon.id}`).addClass("selected");
     }
     equipArmor(armor) {
         if (this.armor) {
-            let oldKey = this.armor.key;
+            let oldKey = this.armor.id;
             let oldSpace = $(`#space${oldKey}`);
             oldSpace.removeClass("selected");
+            this.armor.isEquipped = false;
         }
-        this.armor = {
-            key: armor.id,
-            val: armor,
-        };
+        this.armor = armor;
+        this.armor.isEquipped = true;
         $("#selectedItem").html(`${armor.name} Equipped`);
         $("#armor").html(`Armor: ${armor.name}`);
         $(`#space${armor.id}`).addClass("selected");
