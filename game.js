@@ -255,7 +255,7 @@ const UNICODE_CHARS = [
     '\u267F', // ♿ Wheelchair Symbol
     '\u2693', // ⚓ Anchor
     '\u26A1', // ⚡ High Voltage Sign
-    '\u0C85', // ಅ Kannada Letter A
+    '\u267B', // recycling
     '\u03E2', // Ϣ Coptic Capital Letter Shei
     '\u1200', // ሀ Ethiopic Syllable Ha
     '\uA000', // ꀀ Yi Syllable It
@@ -535,22 +535,42 @@ class Game {
         $("#alerts").html(message);
     }
     _gameOver() {
+        // TODO clean up
         document.removeEventListener("keydown", this._playerMove);
         this._game.fadeOut("slow").promise().done(() => {
             let children = this._inventorySpaces.children();
             children.each(function (index, child) {
                 $(child).removeClass("selected");
             });
-            this._player.melatoninFound = 0;
+            this._player = new Player(this);
+            for (let space of $("#inventorySpaces").children()) {
+                space.removeEventListener("click", this.inventoryMenu.useItem);
+            }
+            for (let i = 0; i < 9; i++) {
+                let space = $(`#space${i}`);
+                space.off("mouseenter", this.inventoryMenu._displayItem);
+                space.off("mouseleave", this.inventoryMenu._removeItem);
+            }
+            this.inventoryMenu = new InventoryMenu(this._player, this.alertMessage);
+            this._upgradeMenu = new UpgradeMenu(this._player, this.alertMessage, this.inventoryMenu);
+            this._marketMenu = new MarketMenu(this._player, this.alertMessage, this.inventoryMenu);
             this.inventoryMenu.updateMelatonin();
+            this.inventoryMenu.open();
             this._weirdness = -1;
             this._attackingEnemy = null;
             document.removeEventListener("keydown", this._attack);
             this._loadGame();
-            this.drawInventory();
             document.addEventListener("keydown", this._playerMove);
+            // i dont know why it doesn't clear inventory upon loading
+            for (let key of Object.keys(this._player.inventory.contents)) {
+                this._player.inventory.remove(key);
+            }
         });
     }
+    _removeEventListeners() {
+
+    }
+
     tryUpgrade(anvil) {
         this._anvil = anvil;
         this.alertMessage("Press SPACEBAR to talk with the auspicious man");
@@ -882,7 +902,7 @@ class Player extends Entity {
     constructor(game) {
         super(PLAYER_START.x, PLAYER_START.y, "X", PLAYER_HP_START, PLAYER_ATK_START, PLAYER_DEF_START);
         this.game = game;
-        this.inventory = new Inventory();
+        this.inventory = new Inventory(this.game.inventoryMenu);
         this.oldPos = [-1, -1];
         this.map = null;
 
@@ -928,6 +948,7 @@ class Player extends Entity {
     }
     dropItem(item) {
         this.inventory.remove(item);
+        this.game.inventoryMenu.open();
     }
     openDoor(x, y) {
         this.game.openDoor(x, y);
@@ -1144,6 +1165,7 @@ class Potion extends Item {
     }
     use(player) {
         this.giveEffects(player);
+        player.dropItem(this.id);
     }
 }
 
@@ -1152,9 +1174,9 @@ class StrengthPotion extends Potion {
         super(level, "strength", map);
     }
     giveEffects(player) {
-        let strengthAdded = 1 + this._level;
-        this.message = `Gained ${strengthAdded} strength for 20 turns`;
-        player.addStrength(strengthAdded);
+        let addedStrength = 1 + this._level;
+        $("#alerts").html(`Gained ${addedStrength} strength for 20 turns`);
+        player.addStrength(addedStrength);
     }
 }
 
@@ -1165,7 +1187,8 @@ class HealthPotion extends Potion {
     giveEffects(player) {
         let totalHealth = HEALTH_POTION_START + this._level;
         let addedHealth = player.addHealth(totalHealth);
-        this.message = `Gained ${addedHealth} health`;
+        $("#alerts").html(`Gained ${addedHealth} health`);
+        $("#hp").html(`HP: ${player.hp}`);
     }
 }
 
@@ -1452,7 +1475,7 @@ class World extends Graph {
         this.bedroom = bedroom;
         this.addVertex(bedroom);
         let forge;
-        if (getRandomNumber(1, 1) === 1) {
+        if (getRandomNumber(1, 3) === 1) {
             forge = new Forge(this.size + 1);
             this.forge = forge;
             this.addVertex(forge);
@@ -1574,10 +1597,10 @@ class World extends Graph {
     }
     _addRabbit() {
         let randomMap = this.getRandomVertex();
-        let rabbit = new WhiteRabbit(randomMap, 10);
-        while (rabbit.map.addItem(rabbit) === false) {
-            rabbit.map = this.getRandomVertex();
-        }
+        // let rabbit = new WhiteRabbit(randomMap, 10);
+        // while (rabbit.map.addItem(rabbit) === false) {
+        //     rabbit.map = this.getRandomVertex();
+        // }
     }
 }
 
@@ -1654,7 +1677,7 @@ class Map extends Graph {
         return false;
     }
     _generateRooms() {
-        let numOfRooms = Math.floor(Math.random() * 5) + 5;
+        let numOfRooms = Math.floor(Math.random() * 5) + 1;
         for (let i = 0; i < numOfRooms; i++) {
             let room = new Room(i);
             let counter = 0;
