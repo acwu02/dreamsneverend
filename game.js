@@ -62,22 +62,22 @@ const WEAPON_TYPES = {
     },
     "stone": {
         name: "stone",
-        rarity: 3,
+        rarity: 5,
         damage: 2
     },
     "iron": {
         name: "iron",
-        rarity: 6,
+        rarity: 10,
         damage: 3
     },
     "steel": {
         name: "steel",
-        rarity: 9,
+        rarity: 15,
         damage: 5
     },
     "diamond": {
         name: "diamond",
-        rarity: 12,
+        rarity: 25,
         damage: 7
     }
 }
@@ -103,23 +103,23 @@ const ARMOR_TYPES = {
     },
     "chainmail": {
         name: "chainmail",
-        rarity: 3,
+        rarity: 5,
         protection: 2
     },
     "iron": {
         name: "iron",
-        rarity: 6,
+        rarity: 10,
         protection: 3
     },
     "steel": {
         name: "steel",
-        rarity: 9,
-        protection: 5
+        rarity: 15,
+        protection: 4
     },
     "diamond": {
         name: "diamond",
-        rarity: 12,
-        protection: 7
+        rarity: 25,
+        protection: 6
     }
 }
 
@@ -257,9 +257,9 @@ const UNICODE_CHARS = [
     '\u26A1', // ⚡ High Voltage Sign
     '\u267B', // recycling
     '\u03E2', // Ϣ Coptic Capital Letter Shei
-    '\u1200', // ሀ Ethiopic Syllable Ha
+    '\u2126', // omega
     '\uA000', // ꀀ Yi Syllable It
-    '\u16A0', // ᚠ Runic Letter Feoh Fehu Fe F
+    '\u2699', // gear
     '\u2708'  // ✈ Airplane
 ];
 
@@ -283,7 +283,7 @@ function gaussianRandom() {
 }
 
 function gaussian(mu) {
-    return Math.abs(Math.ceil(mu + gaussianRandom()));
+    return Math.abs(Math.ceil(mu + gaussianRandom())) + 1;
 }
 
 function logTransformation(x) {
@@ -735,7 +735,15 @@ class UpgradeMenu extends Menu {
             space.removeEventListener("click", this.inventoryMenu.useItem);
             space.addEventListener("click", this._completeUpgradeItem);
         }
+        document.addEventListener("keydown", () => {
+            for (let space of $("#inventorySpaces").children()) {
+                space.addEventListener("click", this.inventoryMenu.useItem);
+                space.removeEventListener("click", this._completeUpgradeItem);
+            }
+        })
     }
+
+
     _completeUpgradeItem(event) {
         let id = event.target.id[5];
         let item = this._player.inventory.contents[id];
@@ -752,6 +760,8 @@ class UpgradeMenu extends Menu {
             } else {
                 this.alertMessage("Cannot upgrade item");
             }
+            document.removeEventListener("")
+            this._closeUpgradeMenu();
         }
     }
 }
@@ -819,11 +829,12 @@ class MarketMenu extends Menu {
         this._player.gold += item.worth;
         $("#gold").html(`Gold: ${this._player.gold}`);
         this._player.inventory.remove(item.id);
-        this._openInventory();
-        for (let space of this._inventorySpaces.children()) {
+        this.inventoryMenu.open();
+        for (let space of $("#inventorySpaces").children()) {
             space.removeEventListener("click", this._selectSellItem);
             space.addEventListener("click", this.inventoryMenu.useItem);
         }
+        this._itemToSell = null;
         document.removeEventListener("keydown", this._completeSellItem);
     }
 }
@@ -920,7 +931,9 @@ class Player extends Entity {
         this.totalMelatonin = 0;
     }
     takeDamage(opp) {
-        let damageToTake = Math.ceil(opp.atk);
+        let damageToTake = Math.ceil(opp.atk)
+        if (this.armor) damageToTake -= this.armor.protection;
+        if (damageToTake < 0) damageToTake = 0;
         this.hp -= damageToTake;
         return damageToTake;
     }
@@ -1278,7 +1291,7 @@ class WhiteRabbit extends Entity {
         super(null, null, "r");
         this.map = map;
         this.life = 0;
-        this.lifespan = 100;
+        this.lifespan = 15;
     }
     move() {
         if (getRandomNumber(1, 2) === 1) {
@@ -1597,10 +1610,10 @@ class World extends Graph {
     }
     _addRabbit() {
         let randomMap = this.getRandomVertex();
-        // let rabbit = new WhiteRabbit(randomMap, 10);
-        // while (rabbit.map.addItem(rabbit) === false) {
-        //     rabbit.map = this.getRandomVertex();
-        // }
+        let rabbit = new WhiteRabbit(randomMap, 10);
+        while (rabbit.map.addItem(rabbit) === false) {
+            rabbit.map = this.getRandomVertex();
+        }
     }
 }
 
