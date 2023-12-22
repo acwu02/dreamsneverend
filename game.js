@@ -794,6 +794,7 @@ class MarketMenu extends Menu {
         this._completeSellItem = this._completeSellItem.bind(this);
         this._buyHealthPotion = this._buyHealthPotion.bind(this);
         this._buyStrengthPotion = this._buyStrengthPotion.bind(this);
+        this._cancelSell = this._cancelSell.bind(this);
         $("#sell").click(this._sellItem);
         $("#market1").click(this._buyHealthPotion);
         $("#market2").click(this._buyStrengthPotion);
@@ -827,6 +828,13 @@ class MarketMenu extends Menu {
             space.removeEventListener("click", this.inventoryMenu.useItem);
             space.addEventListener("click", this._selectSellItem);
         }
+        document.addEventListener("keydown", this._cancelSell);
+    }
+    _cancelSell() {
+        for (let space of $("#inventorySpaces").children()) {
+            space.addEventListener("click", this.inventoryMenu.useItem);
+            space.removeEventListener("click", this._selectSellItem);
+        }
     }
     _selectSellItem(event) {
         let id = event.target.id[5];
@@ -842,39 +850,59 @@ class MarketMenu extends Menu {
                 $("#alerts").html("Cannot sell equipped item");
                 return;
             }
-            this.alertMessage(`Press SPACEBAR to sell ${item.name} for ${item.worth} gold?`);
+            this.alertMessage(`Press SPACEBAR to sell ${item.name} for ${item.worth} gold`);
             this._itemToSell = item;
             document.addEventListener("keydown", this._completeSellItem);
         }
     }
-    _completeSellItem() {
-        let item = this._itemToSell;
-        this.alertMessage(`Sold ${item.name} for ${item.worth} gold`);
-        this._player.gold += item.worth;
-        $("#gold").html(`Gold: ${this._player.gold}`);
-        this._player.inventory.remove(item.id);
-        this.inventoryMenu.open();
-        for (let space of $("#inventorySpaces").children()) {
-            space.removeEventListener("click", this._selectSellItem);
-            space.addEventListener("click", this.inventoryMenu.useItem);
+    _completeSellItem(event) {
+        if (event.code === "Space") {
+            let item = this._itemToSell;
+            this.alertMessage(`Sold ${item.name} for ${item.worth} gold`);
+            this._player.gold += item.worth;
+            $("#gold").html(`Gold: ${this._player.gold}`);
+            this._player.inventory.remove(item.id);
+            this.inventoryMenu.open();
+            for (let space of $("#inventorySpaces").children()) {
+                space.removeEventListener("click", this._selectSellItem);
+                space.addEventListener("click", this.inventoryMenu.useItem);
+            }
+            this._itemToSell = null;
         }
-        this._itemToSell = null;
         document.removeEventListener("keydown", this._completeSellItem);
     }
 
     // TODO implement buying potions
     _buyHealthPotion() {
-        let healthPotion = new HealthPotion(this._player.game._weirdness, undefined);
-        this._player.inventory.insert(healthPotion);
-        this.inventoryMenu.open();
-        $("#alerts").html("Bought health potion");
+        if (this._player.gold >= START_MARKET_COST) {
+            let healthPotion = new HealthPotion(this._player.game._weirdness, undefined);
+            if (!this._player.inventory.insert(healthPotion)) {
+                $("#alerts").html("Inventory full");
+                return;
+            }
+            this._player.inventory.insert(healthPotion);
+            this.inventoryMenu.open();
+            this._player.removeGold(START_MARKET_COST);
+            $("#alerts").html("Bought health potion");
+        } else {
+            $("#alerts").html("Not enough gold");
+        }
     }
 
     _buyStrengthPotion() {
-        let strengthPotion = new StrengthPotion(this._player.game._weirdness, undefined);
-        this._player.inventory.insert(strengthPotion);
-        this.inventoryMenu.open();
-        $("#alerts").html("Bought strength potion");
+        if (this._player.gold >= START_MARKET_COST) {
+            let strengthPotion = new StrengthPotion(this._player.game._weirdness, undefined);
+            if (!this._player.inventory.insert(strengthPotion)) {
+                $("#alerts").html("Inventory full");
+                return;
+            }
+            this._player.inventory.insert(strengthPotion);
+            this.inventoryMenu.open();
+            this._player.removeGold(START_MARKET_COST);
+            $("#alerts").html("Bought strength potion");
+        } else {
+            $("#alerts").html("Not enough gold");
+        }
     }
 }
 
@@ -1074,6 +1102,10 @@ class Player extends Entity {
     }
     talkWithRabbit() {
         this.game.tryOpenMarket();
+    }
+    removeGold(amount) {
+        this.gold -= amount;
+        $("#gold").html(`Gold: ${this.gold}`);
     }
 }
 
