@@ -989,7 +989,7 @@ class Player extends Entity {
 
         this.weapon = null;
         this.armor = null;
-        this.maxHP = PLAYER_HP_START;
+        this.maxHP = PLAYER_HP_START + 100000;
         this.hp = PLAYER_HP_START;
         this.baseAtk = PLAYER_ATK_START;
         this.baseDef = PLAYER_DEF_START;
