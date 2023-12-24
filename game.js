@@ -39,7 +39,7 @@ const PLAYER_HP_START = 50;
 const PLAYER_ATK_START = 1;
 const PLAYER_DEF_START = 1;
 
-const HP_INCREMENT_VAL = 10;
+const HP_INCREMENT_VAL = 5;
 
 const ENEMY_HP_START = 4;
 const ENEMY_ATK_START = 0;
@@ -880,7 +880,6 @@ class MarketMenu extends Menu {
                 $("#alerts").html("Inventory full");
                 return;
             }
-            this._player.inventory.insert(healthPotion);
             this.inventoryMenu.open();
             this._player.removeGold(START_MARKET_COST);
             $("#alerts").html("Bought health potion");
@@ -896,7 +895,6 @@ class MarketMenu extends Menu {
                 $("#alerts").html("Inventory full");
                 return;
             }
-            this._player.inventory.insert(strengthPotion);
             this.inventoryMenu.open();
             this._player.removeGold(START_MARKET_COST);
             $("#alerts").html("Bought strength potion");
