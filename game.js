@@ -416,12 +416,12 @@ class Game {
     _attack(event) {
         this._alerts.html("");
         let playerDamage = this._player.takeDamage(this._attackingEnemy);
+        this._playerHP.html(`HP: ${this._player.hp}`);
         if (this._player.hp <= 0) {
             this._gameOver();
             return;
         }
         let string = `Player took ${playerDamage} damage; remaining ${this._player.hp}`;
-        this._playerHP.html(`HP: ${this._player.hp}`);
         if (event.code === 'Space') {
             let enemyDamage = this._attackingEnemy.takeDamage(this._player);
             string = string.concat(`<br>${this._attackingEnemy.name} took ${enemyDamage} damage; remaining ${this._attackingEnemy.hp}`);
@@ -994,7 +994,7 @@ class Player extends Entity {
         this.baseAtk = PLAYER_ATK_START;
         this.baseDef = PLAYER_DEF_START;
         this.exp = 0;
-        this.gold = 0;
+        this.gold = 30;
         this.def = 1;
 
         this.melatoninFound = 0;
@@ -1005,6 +1005,7 @@ class Player extends Entity {
         if (this.armor) damageToTake -= this.armor.protection;
         if (damageToTake < 0) damageToTake = 0;
         this.hp -= damageToTake;
+        if (this.hp < 0) this.hp = 0;
         return damageToTake;
     }
     move(direction) {
@@ -1369,7 +1370,7 @@ class WhiteRabbit extends Entity {
         super(null, null, "r");
         this.map = map;
         this.life = 0;
-        this.lifespan = 15;
+        this.lifespan = 150;
     }
     move() {
         if (getRandomNumber(1, 2) === 1) {
