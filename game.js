@@ -805,14 +805,18 @@ class MarketMenu extends Menu {
     open(event) {
         event.preventDefault();
         if (event.code === "Space") {
-            $("#marketMenu").removeClass("hidden2");
-            $("#market1").html(`Buy Health Potion<br>${this._market1Cost} Gold`);
-            $("#market2").html(`Buy Strength Potion<br>${this._market2Cost} Gold`);
-            document.addEventListener("keydown", this.close);
+            this._openMenu();
         } else {
             document.removeEventListener("keydown", this.open);
         }
     }
+    _openMenu() {
+        $("#marketMenu").removeClass("hidden2");
+        $("#market1").html(`Buy Health Potion<br>${this._market1Cost} Gold`);
+        $("#market2").html(`Buy Strength Potion<br>${this._market2Cost} Gold`);
+        document.addEventListener("keydown", this.close);
+    }
+
     close(event) {
         if (event.code === "ArrowLeft" || event.code === "ArrowRight"
             || event.code === "ArrowUp" || event.code === "ArrowDown") {
@@ -882,9 +886,8 @@ class MarketMenu extends Menu {
             }
             this.inventoryMenu.open();
             this._player.removeGold(this._market1Cost);
-            this._player.removeGold(this._market1Cost);
             this._market1Cost += 1;
-            this.open();
+            this._openMenu();
             $("#alerts").html("Bought health potion");
         } else {
             $("#alerts").html("Not enough gold");
@@ -901,7 +904,7 @@ class MarketMenu extends Menu {
             this.inventoryMenu.open();
             this._player.removeGold(this._market2Cost);
             this._market2Cost += 1;
-            this.open();
+            this._openMenu();
             $("#alerts").html("Bought strength potion");
         } else {
             $("#alerts").html("Not enough gold");
@@ -923,15 +926,13 @@ class Tile {
     interact() {
         return;
     }
-    // Calculate the heuristic cost (Euclidean distance) from this node to the goal node
     heuristic(goal) {
         return Math.abs(this.x - goal[0]) + Math.abs(this.y - goal[1]);
     }
-    // Get neighboring nodes that are walkable
     getNeighbors(tiles) {
         let neighbors = [];
-        let dx = [-1, 0, 1, 0]; // Neighboring cell x offsets (left, up, right, down)
-        let dy = [0, -1, 0, 1]; // Neighboring cell y offsets (left, up, right, down)
+        let dx = [-1, 0, 1, 0];
+        let dy = [0, -1, 0, 1];
         for (let i = 0; i < 4; i++) {
             let nx = this.x + dx[i];
             let ny = this.y + dy[i];
@@ -989,12 +990,12 @@ class Player extends Entity {
 
         this.weapon = null;
         this.armor = null;
-        this.maxHP = PLAYER_HP_START + 100000;
+        this.maxHP = PLAYER_HP_START;
         this.hp = PLAYER_HP_START;
         this.baseAtk = PLAYER_ATK_START;
         this.baseDef = PLAYER_DEF_START;
         this.exp = 0;
-        this.gold = 30;
+        this.gold = 0;
         this.def = 1;
 
         this.melatoninFound = 0;
@@ -1370,7 +1371,7 @@ class WhiteRabbit extends Entity {
         super(null, null, "r");
         this.map = map;
         this.life = 0;
-        this.lifespan = 150;
+        this.lifespan = 15;
     }
     move() {
         if (getRandomNumber(1, 2) === 1) {
