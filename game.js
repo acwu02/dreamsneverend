@@ -739,7 +739,7 @@ class UpgradeMenu extends Menu {
         this.alertMessage(`Player HP upgraded to ${this._player.maxHP}`);
         this._player.exp -= this._upgrade1Cost;
         this._updateEXP();
-        this._upgrade1Cost *= 2;
+        this._upgrade1Cost += 1;
         this._closeUpgradeMenu();
         this._anvil = null;
     }
@@ -771,7 +771,7 @@ class UpgradeMenu extends Menu {
                 this.alertMessage(`${item.name} upgraded`);
                 this._player.exp -= this._upgrade2Cost;
                 this._updateEXP();
-                this._upgrade2Cost *= 2;
+                this._upgrade2Cost += 1;
                 for (let space of $("#inventorySpaces").children()) {
                     space.removeEventListener("click", this._completeUpgradeItem);
                     space.addEventListener("click", this.inventoryMenu.useItem);
@@ -881,7 +881,10 @@ class MarketMenu extends Menu {
                 return;
             }
             this.inventoryMenu.open();
-            this._player.removeGold(START_MARKET_COST);
+            this._player.removeGold(this._market1Cost);
+            this._player.removeGold(this._market1Cost);
+            this._market1Cost += 1;
+            this.open();
             $("#alerts").html("Bought health potion");
         } else {
             $("#alerts").html("Not enough gold");
@@ -896,7 +899,9 @@ class MarketMenu extends Menu {
                 return;
             }
             this.inventoryMenu.open();
-            this._player.removeGold(START_MARKET_COST);
+            this._player.removeGold(this._market2Cost);
+            this._market2Cost += 1;
+            this.open();
             $("#alerts").html("Bought strength potion");
         } else {
             $("#alerts").html("Not enough gold");
@@ -1050,7 +1055,7 @@ class Player extends Entity {
         }
         this.weapon = weapon;
         this.weapon.isEquipped = true;
-        $("#selectedItem").html(`${weapon.name} Equipped`);
+        $("#selectedItem").html(`${weapon.name}<br>Equipped`);
         $("#weapon").html(`Weapon: ${weapon.name}`);
         $(`#space${weapon.id}`).addClass("selected");
     }
