@@ -532,8 +532,16 @@ class Game {
     }
     _gameOver() {
         // TODO clean up
+        // TODO remove inventory event listeners
         document.removeEventListener("keydown", this._playerMove);
         document.removeEventListener("keydown", this._attack);
+        if (this.inventoryMenu.isOpen) {
+            $("#inventorySpaces").children().each(
+                this.off("click"),
+                this.off("mouseenter"),
+                this.off("mouseleave")
+            );
+        }
         this._attackingEnemy = null;
         let highScore = this._setHighScore(this._weirdness);
         $("#alerts").html(`You died<br>High score: ${highScore}`);
