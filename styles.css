@@ -63,10 +63,14 @@ button {
 }
 
 #alerts {
-    height: 5%;
+    display: flex;
+    height: 9%;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     white-space: nowrap;
     margin: 0px;
+    padding: 0px;
 }
 
 #inventory {
@@ -150,4 +154,9 @@ h4 {
 
 .hidden2 {
     visibility: hidden;
+}
+
+#newGame {
+    margin: 0px;
+    padding: 0px;
 }

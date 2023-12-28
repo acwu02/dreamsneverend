@@ -333,7 +333,7 @@ class Game {
 
         this._world = null;
 
-        this._weirdness = -1;
+        this.weirdness = -1;
 
         this._door = null;
         this._currMap = null;
@@ -358,25 +358,25 @@ class Game {
         this._createWorld();
     }
     _createWorld() {
-        this._weirdness += 1;
-        this._level.html(`Level: ${this._weirdness}`);
+        this.weirdness += 1;
+        this._level.html(`Level: ${this.weirdness}`);
         let numMelatonin;
         let numItems;
         let numEnemies;
-        let worldSize = 1 + Math.ceil(2 * Math.log(this._weirdness));
+        let worldSize = 1 + Math.ceil(2 * Math.log(this.weirdness));
         if (worldSize === 1) {
             worldSize++;
         }
-        if (this._weirdness === 0) {
+        if (this.weirdness === 0) {
             this.alertMessage("Use ARROW KEYS to move");
             document.addEventListener("keydown", this._playerMove);
             // TODO remove else condition
         } else {
-            numMelatonin = logTransformation(this._weirdness);
-            numItems = Math.abs(logTransformation(this._weirdness) - 1);
-            numEnemies = logTransformation(this._weirdness) + 1;
+            numMelatonin = logTransformation(this.weirdness);
+            numItems = Math.abs(logTransformation(this.weirdness) - 1);
+            numEnemies = logTransformation(this.weirdness) + 1;
         }
-        this._world = new World(worldSize, numMelatonin, numItems, numEnemies, this._weirdness);
+        this._world = new World(worldSize, numMelatonin, numItems, numEnemies, this.weirdness);
         this._player.melatoninFound = 0;
         this._player.totalMelatonin = numMelatonin;
         this._updateMap(this._world.bedroom);
@@ -463,7 +463,7 @@ class Game {
     }
     _goToSleep(event) {
         if (event.code === 'Space' || event.key === ' ' || event.keyCode === 32) {
-            if (this._weirdness > 0 && this._player.melatoninFound < this._player.totalMelatonin) {
+            if (this.weirdness > 0 && this._player.melatoninFound < this._player.totalMelatonin) {
                 let alertMessage = "You are not sleepy. Find melatonin to go to sleep";
                 this._alerts.html($(alertMessage));
                 return;
@@ -491,6 +491,7 @@ class Game {
         document.addEventListener("keydown", this._tryOpenDoor);
     }
     _tryOpenDoor(event) {
+        event.preventDefault();
         if (event.code === 'Space' || event.key === ' ' || event.keyCode === 32) {
             if (this._door.dest === null) {
                 this._alerts.html("Door is locked");
@@ -510,8 +511,8 @@ class Game {
         } else if (event.code === "ArrowLeft" || event.code === "ArrowRight"
             || event.code === "ArrowUp" || event.code === "ArrowDown") {
             this._alerts.html("");
-            document.removeEventListener('keydown', this._tryOpenDoor);
         }
+        document.removeEventListener('keydown', this._tryOpenDoor);
     }
     _updateMap(newMap) {
         this._currMap = newMap;
@@ -536,14 +537,13 @@ class Game {
         document.removeEventListener("keydown", this._playerMove);
         document.removeEventListener("keydown", this._attack);
         if (this.inventoryMenu.isOpen) {
-            $("#inventorySpaces").children().each(
-                this.off("click"),
-                this.off("mouseenter"),
-                this.off("mouseleave")
-            );
+            $("#inventorySpaces").find("*").off();
+        }
+        for (let space of $("#inventorySpaces").children()) {
+            space.removeEventListener("click", this.inventoryMenu.useItem);
         }
         this._attackingEnemy = null;
-        let highScore = this._setHighScore(this._weirdness);
+        let highScore = this._setHighScore(this.weirdness);
         $("#alerts").html(`You died<br>High score: ${highScore}`);
         $("#newGame").removeClass("hidden2");
         $("#newGame").on("click", this._resetGame);
@@ -552,15 +552,15 @@ class Game {
     _setHighScore() {
         let highScore = localStorage.getItem("highScore");
         if (highScore) {
-            if (this._weirdness > parseInt(highScore)) {
-                localStorage.setItem("highScore", this._weirdness);
-                return this._weirdness;
+            if (this.weirdness > parseInt(highScore)) {
+                localStorage.setItem("highScore", this.weirdness);
+                return this.weirdness;
             } else {
                 return highScore;
             }
         } else {
-            localStorage.setItem("highScore", this._weirdness);
-            return this._weirdness;
+            localStorage.setItem("highScore", this.weirdness);
+            return this.weirdness;
         }
     }
 
@@ -585,7 +585,7 @@ class Game {
             this._marketMenu = new MarketMenu(this._player, this.alertMessage, this.inventoryMenu);
             this.inventoryMenu.updateMelatonin();
             this.inventoryMenu.open();
-            this._weirdness = -1;
+            this.weirdness = -1;
             this._attackingEnemy = null;
             this._loadGame();
             document.addEventListener("keydown", this._playerMove);
@@ -715,7 +715,7 @@ class UpgradeMenu extends Menu {
         if (event.code === 'Space') {
             // $("#upgrade1").html(`Restore HP<br>${this._upgrade1Cost} EXP`);
             $("#upgrade1").html(`Upgrade Max HP<br>${this._upgrade1Cost} EXP`);
-            $("#upgrade2").html(`Upgrade Weapon<br>${this._upgrade2Cost} EXP`);
+            $("#upgrade2").html(`Upgrade Item<br>${this._upgrade2Cost} EXP`);
             $("#upgradeMenu").removeClass("hidden2");
             document.addEventListener("keydown", this._closeUpgradeMenu);
         } else if (event.code === "ArrowLeft" || event.code === "ArrowRight"
@@ -887,7 +887,7 @@ class MarketMenu extends Menu {
     // TODO implement buying potions
     _buyHealthPotion() {
         if (this._player.gold >= START_MARKET_COST) {
-            let healthPotion = new HealthPotion(this._player.game._weirdness, undefined);
+            let healthPotion = new HealthPotion(this._player.game.weirdness, undefined);
             if (!this._player.inventory.insert(healthPotion)) {
                 $("#alerts").html("Inventory full");
                 return;
@@ -904,7 +904,7 @@ class MarketMenu extends Menu {
 
     _buyStrengthPotion() {
         if (this._player.gold >= START_MARKET_COST) {
-            let strengthPotion = new StrengthPotion(this._player.game._weirdness, undefined);
+            let strengthPotion = new StrengthPotion(this._player.game.weirdness, undefined);
             if (!this._player.inventory.insert(strengthPotion)) {
                 $("#alerts").html("Inventory full");
                 return;
@@ -1147,7 +1147,11 @@ class Inventory {
         return false;
     }
     remove(id) {
-        this.contents[id] = null;
+        if (this.contents[id] !== null) {
+            this.contents[id] = null;
+            return true;
+        }
+        return false;
     }
     clearMelatonin() {
         for (let key of Object.keys(this.contents)) {
@@ -1562,7 +1566,7 @@ class World extends Graph {
         this.numMelatonin = numMelatonin;
         this._numItems = numItems;
         this._numEnemies = numEnemies;
-        this._weirdness = weirdness;
+        this.weirdness = weirdness;
         this.melatonin = [];
         this.generate();
     }
@@ -1571,7 +1575,6 @@ class World extends Graph {
         this.melatoninFound = 0;
         for (let i = 1; i < this.size; i++) {
             let map = new Map(i);
-            map.generate();
             this.addVertex(map);
         }
         this.randomlyAddEdges();
@@ -1579,7 +1582,7 @@ class World extends Graph {
         this.bedroom = bedroom;
         this.addVertex(bedroom);
         let forge;
-        if (getRandomNumber(1, 3) === 1) {
+        if (getRandomNumber(1, 1) === 1) {
             forge = new Forge(this.size + 1);
             this.forge = forge;
             this.addVertex(forge);
@@ -1604,7 +1607,7 @@ class World extends Graph {
         this._addMelatonin();
         this._addItems();
         this._addEnemies();
-        if (getRandomNumber(1, 1) === 1 && this._weirdness > 0) {
+        if (getRandomNumber(1, 1) === 1 && this.weirdness > 0) {
             this._addRabbit();
         }
     }
@@ -1639,13 +1642,13 @@ class World extends Graph {
             let randomMap = this.getRandomVertex();
             let material;
             if (Math.random() < 0.333) {
-                material = this._generateMaterial(WEAPON_TYPES);
+                material = this.generateMaterial(WEAPON_TYPES);
                 let weapon = new Weapon(randomMap, material);
                 if (randomMap.addItem(weapon) === true) {
                     itemsAdded += 1
                 }
             } else if (Math.random() > 0.666) {
-                material = this._generateMaterial(ARMOR_TYPES);
+                material = this.generateMaterial(ARMOR_TYPES);
                 let armor = new Armor(randomMap, material);
                 if (randomMap.addItem(armor) === true) {
                     itemsAdded += 1
@@ -1653,9 +1656,9 @@ class World extends Graph {
             } else {
                 let potion;
                 if (getRandomNumber(0, 1) === 0) {
-                    potion = new StrengthPotion(this._weirdness, randomMap);
+                    potion = new StrengthPotion(this.weirdness, randomMap);
                 } else {
-                    potion = new HealthPotion(this._weirdness, randomMap);
+                    potion = new HealthPotion(this.weirdness, randomMap);
                 }
                 if (randomMap.addItem(potion) === true) {
                     itemsAdded += 1
@@ -1663,7 +1666,7 @@ class World extends Graph {
             }
         }
     }
-    _generateMaterial(materials) {
+    generateMaterial(materials) {
         let chances = {};
         for (let key of Object.keys(materials)) {
             let material = materials[key];
@@ -1684,16 +1687,16 @@ class World extends Graph {
         }
     }
     _generateChance(material) {
-        if (this._weirdness === 0) return;
-        return Math.exp(-((this._weirdness - material.rarity) ** 2) / (10 * this._weirdness)) * Math.pow(0.5, this._weirdness) * this._weirdness;
+        if (this.weirdness === 0) return;
+        return Math.exp(-((this.weirdness - material.rarity) ** 2) / (10 * this.weirdness)) * Math.pow(0.5, this.weirdness) * this.weirdness;
     }
     _addEnemies() {
         let enemiesAdded = 0;
         while (enemiesAdded < this._numEnemies) {
             let randomMap = this.getRandomVertex();
-            let hp = gaussian(this._weirdness + ENEMY_HP_START);
-            let atk = gaussian(this._weirdness + ENEMY_ATK_START);
-            let enemy = new Enemy(this._weirdness, randomMap, hp, atk);
+            let hp = gaussian(this.weirdness + ENEMY_HP_START);
+            let atk = gaussian(this.weirdness + ENEMY_ATK_START);
+            let enemy = new Enemy(this.weirdness, randomMap, hp, atk);
             if (randomMap.addItem(enemy) === true) {
                 enemiesAdded += 1;
             }
@@ -1717,6 +1720,7 @@ class Map extends Graph {
         this.html = [];
         this.tiles = {};
         this.enemies = {};
+        this.generate();
     }
     replaceTile(oldTile) {
         let tile = new Tile(oldTile.x, oldTile.y, ".");
@@ -1781,8 +1785,8 @@ class Map extends Graph {
         return false;
     }
     _generateRooms() {
-        let numOfRooms = Math.floor(Math.random() * 5) + 1;
-        for (let i = 0; i < numOfRooms; i++) {
+        let numOfRooms = Math.ceil(Math.random() * 5) + 1;
+        for (let i = 1; i < numOfRooms; i++) {
             let room = new Room(i);
             let counter = 0;
             while (this._isAllowedLocation(room) !== true) {
@@ -2068,3 +2072,137 @@ class Door extends Tile {
 }
 
 let game = new Game();
+
+/* TESTING FRAMEWORK */
+
+const NUM_ITERATIONS = 50;
+
+function assert(condition, message) {
+    if (!condition) {
+        console.error("Assertion failed:", message);
+    }
+}
+
+function executeTest(test, numIterations) {
+    for (let i = 0; i < numIterations; i++) {
+        test();
+    }
+}
+
+/* BEGIN TESTS */
+
+// executeTest(worldConnectionTest, 100);
+// executeTest(worldMelatoninTest, 1000);
+// executeTest(mapConnectionTest, 100);
+// executeTest(itemOutlierTest, 1000);
+// executeTest(inventoryStressTest, 1);
+
+/* END TESTS */
+
+/* World generation: */
+
+// Checking that world is connected
+function worldConnectionTest() {
+    let world = new World(size = getRandomNumber(2, 10), 0, 0, 0, 0);
+    world.randomlyAddEdges();
+    let visited = {};
+    function dfs(vertex) {
+        if (!vertex) return;
+        visited[vertex] = true;
+        for (let neighbor of world.adjacencyList[vertex]) {
+            if (!visited[neighbor]) {
+                dfs(neighbor);
+            }
+        }
+    }
+    dfs(world.vertices[1].id);
+    let visitedNodes = Object.keys(visited).length;
+    let totalNodes = Object.keys(world.vertices).length;
+    assert(visitedNodes === totalNodes, "Assertion failed: not all nodes are connected");
+
+}
+
+// Checking that melatonin is placed correctly
+function worldMelatoninTest() {
+    let world = new World(size = getRandomNumber(2, 10), numMelatonin = getRandomNumber(1, size / 2), 0, 0, 0);
+    let numPlacedMelatonin = world.melatonin.length;
+    assert(numPlacedMelatonin === world.numMelatonin, "Assertion failed: melatonin not placed correctly");
+}
+
+/* Map generation: */
+
+// Checking that map is connected
+function mapConnectionTest() {
+    let map = new Map(size = getRandomNumber(2, 10), 0, 0, 0, 0);
+    map.randomlyAddEdges();
+    let visited = {};
+    function dfs(vertex) {
+        if (!vertex) return;
+        visited[vertex] = true;
+        for (let neighbor of map.adjacencyList[vertex]) {
+            if (!visited[neighbor]) {
+                dfs(neighbor);
+            }
+        }
+    }
+    dfs(map.vertices[1].id);
+    let visitedNodes = Object.keys(visited).length;
+    let totalNodes = Object.keys(map.vertices).length;
+    assert(visitedNodes === totalNodes, "Assertion failed: not all nodes are connected");
+}
+
+/* Item generation: */
+
+// Checking that no item outliers are generated
+function itemOutlierTest() {
+    let world = new World(2, 0, 0, 0, weirdness = getRandomNumber(1, 100));
+    let weapon = new Weapon(null, material = world.generateMaterial(WEAPON_TYPES));
+    let armor = new Armor(null, material = world.generateMaterial(ARMOR_TYPES));
+    // we calculate z-score to determine deviation from expected value
+    function zScore(val, mu, sigma,) {
+        return (val - mu) / sigma;
+    }
+    let weaponZ = zScore(weapon.damage, weapon.material.damage, 1);
+    let armorZ = zScore(armor.protection, armor.material.protection, 1);
+    // we define Z-score of >= 5 as significant outlier
+    assert(weaponZ <= 5 && armorZ <= 5, "Assertion failed: outliers generated");
+}
+
+/* Inventory: */
+
+// Checking correct functionality of insert/delete
+function inventoryStressTest() {
+    let inventory = new Inventory();
+    let numInserted = 0;
+    let numRemoved = 0;
+    for (let i = 0; i < 1000; i++) {
+        // if inserting item
+        if (Math.random() > 0.5) {
+            let randomItem = new Item(null);
+            if (inventory.insert(randomItem)) {
+                numInserted++;
+            }
+        // if removing item
+        } else {
+            let randomID = getRandomNumber(0, 8);
+            if (inventory.remove(randomID)) {
+                numRemoved++;
+            }
+        }
+    }
+    let diff = numInserted - numRemoved;
+    let itemsInInventory = 0;
+    for (let [id, item] of Object.entries(inventory.contents)) {
+        if (item !== null) {
+            itemsInInventory += 1;
+        }
+    }
+    if (Math.abs(diff) >= 9) {
+        assert(itemsInInventory === 9, "Assertion failed: total items in inventory does not match operations executed");
+    } else {
+        assert(itemsInInventory === diff, "Assertion failed: total items in inventory does not match operations executed");
+    }
+}
+
+
+
