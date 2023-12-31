@@ -465,7 +465,7 @@ class Game {
         if (event.code === 'Space' || event.key === ' ' || event.keyCode === 32) {
             if (this.weirdness > 0 && this._player.melatoninFound < this._player.totalMelatonin) {
                 let alertMessage = "You are not sleepy. Find melatonin to go to sleep";
-                this._alerts.html($(alertMessage));
+                this._alerts.html(alertMessage);
                 return;
             }
             this._map.fadeOut("slow").promise().done(() => {
@@ -571,6 +571,8 @@ class Game {
             children.each(function (index, child) {
                 $(child).removeClass("selected");
             });
+
+            // TODO clean up
             this._player = new Player(this);
             for (let space of $("#inventorySpaces").children()) {
                 space.removeEventListener("click", this.inventoryMenu.useItem);
@@ -644,7 +646,9 @@ class InventoryMenu extends Menu {
             }
             let inventorySpace = $(`#space${i}`);
             inventorySpace.html(icon);
-            inventorySpace.on("mouseenter", this._displayItem).on("mouseleave", this._removeItem);
+            if (!this.isOpen) {
+                inventorySpace.on("mouseenter", this._displayItem).on("mouseleave", this._removeItem);
+            }
         }
         $("#inventorySpaces").removeClass("hidden2");
         $("#melatonin").removeClass("hidden2");
@@ -654,13 +658,14 @@ class InventoryMenu extends Menu {
     }
     close() {
         this.isOpen = false;
+        $("#inventorySpaces").children().off();
         $("#inventorySpaces").addClass("hidden2");
         $("#melatonin").addClass("hidden2");
         $("#inventoryButton").off("click");
         $("#inventoryButton").click(this.open);
     }
     _displayItem(event) {
-        // event.preventDefault();
+        event.preventDefault();
         let slot = event.target;
         let id = slot.id[5];
         let item = this._player.inventory.contents[id];
@@ -703,7 +708,8 @@ class UpgradeMenu extends Menu {
         this._upgradeMaxHP = this._upgradeMaxHP.bind(this);
         this._upgradeItem = this._upgradeItem.bind(this);
         this._completeUpgradeItem = this._completeUpgradeItem.bind(this);
-        // $("#upgrade1").click(this._restoreHP);
+        this._cancelUpgrade = this._cancelUpgrade.bind(this);
+        // $("#upgrade1").click(this._restoreHP);s
         $("#upgrade1").click(this._upgradeMaxHP);
         $("#upgrade2").click(this._upgradeItem);
         this._upgrade1Cost = START_UPGRADE_COST;
@@ -744,7 +750,7 @@ class UpgradeMenu extends Menu {
             return;
         }
         this._player.upgrademaxHP(HP_INCREMENT_VAL);
-        this.alertMessage(`Player HP upgraded to ${this._player.maxHP}`);
+        $("#alerts").html(`Player HP upgraded to ${this._player.maxHP}`);
         this._player.exp -= this._upgrade1Cost;
         this._updateEXP();
         this._upgrade1Cost += 1;
@@ -762,14 +768,16 @@ class UpgradeMenu extends Menu {
             space.removeEventListener("click", this.inventoryMenu.useItem);
             space.addEventListener("click", this._completeUpgradeItem);
         }
-        document.addEventListener("keydown", () => {
-            for (let space of $("#inventorySpaces").children()) {
-                space.addEventListener("click", this.inventoryMenu.useItem);
-                space.removeEventListener("click", this._completeUpgradeItem);
-            }
-        })
+        // cancel upgrade
+        document.addEventListener("keydown", this._cancelUpgrade);
     }
 
+    _cancelUpgrade() {
+        for (let space of $("#inventorySpaces").children()) {
+            space.addEventListener("click", this.inventoryMenu.useItem);
+            space.removeEventListener("click", this._completeUpgradeItem);
+        }
+    }
 
     _completeUpgradeItem(event) {
         let id = event.target.id[5];
@@ -789,6 +797,7 @@ class UpgradeMenu extends Menu {
             }
             this._closeUpgradeMenu();
         }
+        document.removeEventListener("keydown", this._cancelUpgrade);
     }
 }
 
@@ -854,9 +863,9 @@ class MarketMenu extends Menu {
         if (item) {
             item.worth = 0;
             if (item.icon === 'p') {
-                item.worth = 3; // todo define const
+                item.worth = 2; // todo define const
             } else {
-                item.worth = item.material.rarity + item.level;
+                item.worth = Math.ceil((item.material.rarity + item.level) / 2);
             }
             if (item.isEquipped) {
                 $("#alerts").html("Cannot sell equipped item");
@@ -1582,7 +1591,7 @@ class World extends Graph {
         this.bedroom = bedroom;
         this.addVertex(bedroom);
         let forge;
-        if (getRandomNumber(1, 1) === 1) {
+        if (getRandomNumber(1, 3) === 1) {
             forge = new Forge(this.size + 1);
             this.forge = forge;
             this.addVertex(forge);
@@ -2089,12 +2098,15 @@ function executeTest(test, numIterations) {
 }
 
 /* BEGIN TESTS */
+/* Uncomment the below lines to execute tests. */
 
 // executeTest(worldConnectionTest, 100);
 // executeTest(worldMelatoninTest, 1000);
 // executeTest(mapConnectionTest, 100);
 // executeTest(itemOutlierTest, 1000);
 // executeTest(inventoryStressTest, 1);
+// executeTest(upgradeStressTest, 1);
+// executeTest(marketStressTest, 1);
 
 /* END TESTS */
 
@@ -2200,6 +2212,16 @@ function inventoryStressTest() {
         assert(itemsInInventory === 9, "Assertion failed: total items in inventory does not match operations executed");
     } else {
         assert(itemsInInventory === diff, "Assertion failed: total items in inventory does not match operations executed");
+    }
+}
+
+function upgradeStressTest() {
+    let player = new Player(game);
+    player.exp = 100000000;
+    let upgradeMenu = new UpgradeMenu(player);
+    for (let i = 0; i < 1000; i++) {
+        upgradeMenu._upgradeMaxHP();
+        assert(player.exp === upgradeMenu._player.exp, "Assertion failed: mismatch in player EXP");
     }
 }
 
