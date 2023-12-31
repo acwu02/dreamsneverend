@@ -2016,8 +2016,7 @@ class SpecialRoom extends Map {
         this._height = SPECIAL_HEIGHT;
         this._width = SPECIAL_WIDTH;
         this._isSpecialRoom = true;
-        this.map = SPECIAL_MAP;
-        this._generate();
+        this.generate();
         this._addObject();
     }
     drawDoor(door) {
@@ -2025,9 +2024,9 @@ class SpecialRoom extends Map {
         door.y = SPECIAL_DOOR.y;
         this.updateTile(door);
     }
-    _generate() {
-        for (let i = 0; i < this.map.length; i++) {
-            for (let j = 0; j < this.map[0].length; j++) {
+    generate() {
+        for (let i = 0; i < SPECIAL_MAP.length; i++) {
+            for (let j = 0; j < SPECIAL_MAP[0].length; j++) {
                 this.tiles[[j, i]] = new Tile(j, i, this.map[i][j]);
             }
         }
