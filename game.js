@@ -2027,7 +2027,7 @@ class SpecialRoom extends Map {
     generate() {
         for (let i = 0; i < SPECIAL_MAP.length; i++) {
             for (let j = 0; j < SPECIAL_MAP[0].length; j++) {
-                this.tiles[[j, i]] = new Tile(j, i, this.map[i][j]);
+                this.tiles[[j, i]] = new Tile(j, i, SPECIAL_MAP[i][j]);
             }
         }
     }
