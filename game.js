@@ -1079,7 +1079,7 @@ class Player extends Entity {
         this.baseAtk = PLAYER_ATK_START;
         this.baseDef = PLAYER_DEF_START;
         this.exp = 0;
-        this.gold = 0;
+        this.gold = 100;
         this.def = 1;
 
         this.melatoninFound = 0;
@@ -1525,7 +1525,7 @@ class WhiteRabbit extends Entity {
         super(null, null, "r");
         this.map = map;
         this.life = 0;
-        this.lifespan = 15;
+        this.lifespan = 150;
     }
     move() {
         if (getRandomNumber(1, 2) === 1) {
