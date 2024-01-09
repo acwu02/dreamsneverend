@@ -423,21 +423,22 @@ class Game {
             this._gameOver();
             return;
         }
-        this._currMap.moveEnemies(this._player);
+        // this._currMap.moveEnemies(this._player);
         if (this._attackingEnemy.hp <= 0) {
             this._enemyDie();
             return;
         }
+        // this._currMap.moveEnemies(this._player);
         // TODO replace?
-        // if (this._attackingEnemy.turnsToBurn > 0) {
-        //     this._attackingEnemy.hp -= 1;
-        //     if (this._attackingEnemy.hp <= 0) {
-        //         this._enemyDie();
-        //     }
-        //     $("#alerts").append(`${this._attackingEnemy.name} took 1 fire damage, remaining ${this._attackingEnemy.hp}<br>`);
-        // }
         let string = `Player took ${playerDamage} damage; remaining ${this._player.hp}`;
         if (event.code === 'Space') {
+            if (this._attackingEnemy.turnsToBurn > 0) {
+                this._attackingEnemy.hp -= 1;
+                if (this._attackingEnemy.hp <= 0) {
+                    this._enemyDie();
+                }
+                $("#alerts").append(`${this._attackingEnemy.name} took 1 fire damage, remaining ${this._attackingEnemy.hp}<br>`);
+            }
             let enemyDamage = this._attackingEnemy.takeDamage(this._player);
             string = string.concat(`<br>${this._attackingEnemy.name} took ${enemyDamage} damage; remaining ${this._attackingEnemy.hp}`);
             if (this._attackingEnemy.hp <= 0) {
@@ -465,7 +466,7 @@ class Game {
 
     _getMelatonin(x, y) {
         this.melatoninFound += 1;
-        let alertMessage = `${this.melatoninFound} out of ${this.totalMelatonin} melatonin found`;
+        let alertMessage = `${this.melatoninFound} out of ${this.totalMelatonin} melatonin found<br>`;
         this._alerts.html($(alertMessage));
         this._currMap.html[x][y] = ".";
     }
