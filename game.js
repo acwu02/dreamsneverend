@@ -287,7 +287,7 @@ function gaussian(mu) {
 }
 
 function logTransformation(x) {
-    return Math.ceil(Math.log(x) + 1);
+    return Math.ceil(Math.log(x));
 }
 
 class Game {
@@ -372,8 +372,8 @@ class Game {
             document.addEventListener("keydown", this._playerMove);
             // TODO remove else condition
         } else {
-            numMelatonin = logTransformation(this.weirdness);
-            numItems = Math.abs(logTransformation(this.weirdness) - 1);
+            numMelatonin = logTransformation(this.weirdness) + 1;
+            numItems = Math.abs(Math.ceil(0.67 * logTransformation(this.weirdness) - 1));
             numEnemies = logTransformation(this.weirdness) + 1;
         }
         this._world = new World(worldSize, numMelatonin, numItems, numEnemies, this.weirdness);
@@ -384,6 +384,7 @@ class Game {
         this._game.fadeIn("slow");
     }
     _playerMove(event) {
+        $("#alerts").html("");
         event.preventDefault();
         if (this._keyCodes.hasOwnProperty(event.code)) {
             if (this._alerts.html() !== "") {
@@ -396,11 +397,13 @@ class Game {
             let neighbors = this._player.getNeighbors(this._currMap.tiles)
             for (let neighbor of neighbors) {
                 if (neighbor instanceof Enemy) {
-                    if (!this._attackingEnemy) {
-                        this.alertMessage("Press SPACEBAR to attack");
+                    if (neighbor.turnsToFreeze === 0) {
+                        if (!this._attackingEnemy) {
+                            this.alertMessage("Press SPACEBAR to attack");
+                        }
+                        this._attackingEnemy = neighbor;
+                        document.addEventListener("keydown", this._attack);
                     }
-                    this._attackingEnemy = neighbor;
-                    document.addEventListener("keydown", this._attack);
                 }
             }
             if (this._player.buffTurnsRemaining > 0) {
@@ -414,35 +417,52 @@ class Game {
         this._drawMap();
     }
     _attack(event) {
-        this._alerts.html("");
         let playerDamage = this._player.takeDamage(this._attackingEnemy);
         this._playerHP.html(`HP: ${this._player.hp}`);
         if (this._player.hp <= 0) {
             this._gameOver();
             return;
         }
+        this._currMap.moveEnemies(this._player);
+        if (this._attackingEnemy.hp <= 0) {
+            this._enemyDie();
+            return;
+        }
+        // TODO replace?
+        // if (this._attackingEnemy.turnsToBurn > 0) {
+        //     this._attackingEnemy.hp -= 1;
+        //     if (this._attackingEnemy.hp <= 0) {
+        //         this._enemyDie();
+        //     }
+        //     $("#alerts").append(`${this._attackingEnemy.name} took 1 fire damage, remaining ${this._attackingEnemy.hp}<br>`);
+        // }
         let string = `Player took ${playerDamage} damage; remaining ${this._player.hp}`;
         if (event.code === 'Space') {
             let enemyDamage = this._attackingEnemy.takeDamage(this._player);
             string = string.concat(`<br>${this._attackingEnemy.name} took ${enemyDamage} damage; remaining ${this._attackingEnemy.hp}`);
             if (this._attackingEnemy.hp <= 0) {
-                let alertString = `${this._attackingEnemy.name} died<br>Gained 1 EXP`;
-                this._player.exp += 1;
-                if (getRandomNumber(1, 4) === 1) { // todo clean up
-                    alertString = alertString.concat(" and 1 gold");
-                    this._player.gold += 1;
-                }
-                this.alertMessage(alertString);
-                this._playerEXP.html(`EXP: ${this._player.exp}`);
-                $("#gold").html(`Gold: ${this._player.gold}`);
-                this._currMap.replaceTile(this._attackingEnemy);
-                document.removeEventListener("keydown", this._attack);
-                this._attackingEnemy = null;
+                this._enemyDie();
                 return;
             }
         }
-        this.alertMessage(string);
+        $("#alerts").append(`${string}<br>`);
     }
+    _enemyDie() {
+        let alertString = `${this._attackingEnemy.name} died<br>Gained 1 EXP`;
+        this._player.exp += 1;
+        if (getRandomNumber(1, 4) === 1) { // todo clean up
+            alertString = alertString.concat(" and 1 gold");
+            this._player.gold += 1;
+        }
+        $("#alerts").html(alertString);
+        this._playerEXP.html(`EXP: ${this._player.exp}`);
+        $("#gold").html(`Gold: ${this._player.gold}`);
+        this._currMap.replaceTile(this._attackingEnemy);
+        document.removeEventListener("keydown", this._attack);
+        this._attackingEnemy = null;
+
+    }
+
     _getMelatonin(x, y) {
         this.melatoninFound += 1;
         let alertMessage = `${this.melatoninFound} out of ${this.totalMelatonin} melatonin found`;
@@ -462,12 +482,15 @@ class Game {
         document.addEventListener("keydown", this._goToSleep);
     }
     _goToSleep(event) {
+        // event.stopPropagation();
+        event.preventDefault();
         if (event.code === 'Space' || event.key === ' ' || event.keyCode === 32) {
             if (this.weirdness > 0 && this._player.melatoninFound < this._player.totalMelatonin) {
                 let alertMessage = "You are not sleepy. Find melatonin to go to sleep";
                 this._alerts.html(alertMessage);
                 return;
             }
+            document.removeEventListener('keydown', this._goToSleep);
             this._map.fadeOut("slow").promise().done(() => {
                 this._player.restoreHP();
                 this._player.inventory.clearMelatonin();
@@ -476,8 +499,10 @@ class Game {
                 }
                 this._alerts.html("");
                 this._createWorld();
-                this._melatonin.html(`Melatonin found: ${this._player.melatoninFound}/${this._player.totalMelatonin}`)
-                this._map.fadeIn("slow");
+                this._melatonin.html(`Melatonin found: ${this._player.melatoninFound}/${this._player.totalMelatonin}`);
+                this._map.fadeIn("slow").promise().done(() => {
+                    document.addEventListener('keydown', this._goToSleep);
+                });
             });
         } else if (event.code === "ArrowLeft" || event.code === "ArrowRight"
             || event.code === "ArrowUp" || event.code === "ArrowDown") {
@@ -571,6 +596,7 @@ class Game {
             children.each(function (index, child) {
                 $(child).removeClass("selected");
             });
+            $("#alerts").html("");
 
             // TODO clean up
             this._player = new Player(this);
@@ -606,7 +632,7 @@ class Game {
         document.addEventListener("keydown", this._upgradeMenu.open);
     }
     tryOpenMarket() {
-        this.alertMessage("Press SPACEBAR to catch the white rabbit");
+        this.alertMessage("Press SPACEBAR to catch the white rabbit<br>");
         document.addEventListener("keydown", this._marketMenu.open);
     }
 }
@@ -783,17 +809,17 @@ class UpgradeMenu extends Menu {
         let id = event.target.id[5];
         let item = this._player.inventory.contents[id];
         if (item) {
-            if (item.upgrade() !== false) {
+            if (!item.upgrade()) {
                 this.alertMessage(`${item.name} upgraded`);
                 this._player.exp -= this._upgrade2Cost;
                 this._updateEXP();
                 this._upgrade2Cost += 1;
-                for (let space of $("#inventorySpaces").children()) {
-                    space.removeEventListener("click", this._completeUpgradeItem);
-                    space.addEventListener("click", this.inventoryMenu.useItem);
-                }
             } else {
                 this.alertMessage("Cannot upgrade item");
+            }
+            for (let space of $("#inventorySpaces").children()) {
+                space.removeEventListener("click", this._completeUpgradeItem);
+                space.addEventListener("click", this.inventoryMenu.useItem);
             }
             this._closeUpgradeMenu();
         }
@@ -811,12 +837,18 @@ class MarketMenu extends Menu {
         this._completeSellItem = this._completeSellItem.bind(this);
         this._buyHealthPotion = this._buyHealthPotion.bind(this);
         this._buyStrengthPotion = this._buyStrengthPotion.bind(this);
+        this._buyFireScroll = this._buyFireScroll.bind(this);
+        this._buyIceScroll = this._buyIceScroll.bind(this);
         this._cancelSell = this._cancelSell.bind(this);
         $("#sell").click(this._sellItem);
         $("#market1").click(this._buyHealthPotion);
         $("#market2").click(this._buyStrengthPotion);
+        $("#market3").click(this._buyFireScroll);
+        $("#market4").click(this._buyIceScroll);
         this._market1Cost = START_MARKET_COST;
         this._market2Cost = START_MARKET_COST;
+        this._market3Cost = START_MARKET_COST;
+        this._market4Cost = START_MARKET_COST;
         this.inventoryMenu = inventoryMenu;
     }
     open(event) {
@@ -831,6 +863,8 @@ class MarketMenu extends Menu {
         $("#marketMenu").removeClass("hidden2");
         $("#market1").html(`Buy Health Potion<br>${this._market1Cost} Gold`);
         $("#market2").html(`Buy Strength Potion<br>${this._market2Cost} Gold`);
+        $("#market3").html(`Buy Fire Scroll<br>${this._market3Cost} Gold`);
+        $("#market4").html(`Buy Ice Scroll<br>${this._market4Cost} Gold`);
         document.addEventListener("keydown", this.close);
     }
 
@@ -856,16 +890,17 @@ class MarketMenu extends Menu {
             space.addEventListener("click", this.inventoryMenu.useItem);
             space.removeEventListener("click", this._selectSellItem);
         }
+        document.removeEventListener("keydown", this._cancelSell);
     }
     _selectSellItem(event) {
         let id = event.target.id[5];
         let item = this._player.inventory.contents[id];
         if (item) {
             item.worth = 0;
-            if (item.icon === 'p') {
+            if (item instanceof Potion || item instanceof Scroll) {
                 item.worth = 2; // todo define const
             } else {
-                item.worth = Math.ceil((item.material.rarity + item.level) / 2);
+                item.worth = Math.ceil((item.material.rarity + item.level) / 3);
             }
             if (item.isEquipped) {
                 $("#alerts").html("Cannot sell equipped item");
@@ -891,11 +926,11 @@ class MarketMenu extends Menu {
             this._itemToSell = null;
         }
         document.removeEventListener("keydown", this._completeSellItem);
+        document.removeEventListener("keydown", this._cancelSell);
     }
 
-    // TODO implement buying potions
     _buyHealthPotion() {
-        if (this._player.gold >= START_MARKET_COST) {
+        if (this._player.gold >= this._market1Cost) {
             let healthPotion = new HealthPotion(this._player.game.weirdness, undefined);
             if (!this._player.inventory.insert(healthPotion)) {
                 $("#alerts").html("Inventory full");
@@ -912,7 +947,7 @@ class MarketMenu extends Menu {
     }
 
     _buyStrengthPotion() {
-        if (this._player.gold >= START_MARKET_COST) {
+        if (this._player.gold >= this._market2Cost) {
             let strengthPotion = new StrengthPotion(this._player.game.weirdness, undefined);
             if (!this._player.inventory.insert(strengthPotion)) {
                 $("#alerts").html("Inventory full");
@@ -923,6 +958,40 @@ class MarketMenu extends Menu {
             this._market2Cost += 1;
             this._openMenu();
             $("#alerts").html("Bought strength potion");
+        } else {
+            $("#alerts").html("Not enough gold");
+        }
+    }
+
+    _buyFireScroll() {
+        if (this._player.gold >= this._market3Cost) {
+            let fireScroll = new FireScroll(this._player.game.weirdness, this._player.map);
+            if (!this._player.inventory.insert(fireScroll)) {
+                $("#alerts").html("Inventory full");
+                return;
+            }
+            this.inventoryMenu.open();
+            this._player.removeGold(this._market3Cost);
+            this._market3Cost += 1;
+            this._openMenu();
+            $("#alerts").html("Bought fire scroll");
+        } else {
+            $("#alerts").html("Not enough gold");
+        }
+    }
+
+    _buyIceScroll() {
+        if (this._player.gold >= this._market4Cost) {
+            let iceScroll = new IceScroll(this._player.game.weirdness, this._player.map);
+            if (!this._player.inventory.insert(iceScroll)) {
+                $("#alerts").html("Inventory full");
+                return;
+            }
+            this.inventoryMenu.open();
+            this._player.removeGold(this._market4Cost);
+            this._market4Cost += 1;
+            this._openMenu();
+            $("#alerts").html("Bought ice scroll potion");
         } else {
             $("#alerts").html("Not enough gold");
         }
@@ -982,7 +1051,7 @@ class Bed extends Tile {
 
 class Anvil extends Tile {
     constructor() {
-        super(FORGE_POSITION.x, FORGE_POSITION.y, "a");
+        super(FORGE_POSITION.x, FORGE_POSITION.y, "?");
     }
     interact(player) {
         player.game.tryUpgrade(this);
@@ -1215,9 +1284,6 @@ class Weapon extends Item {
         this.name = `${getRandomString(ADJECTIVES)} ${this.material.name} ${getRandomString(SWORD_OBJECTS)}`;
         this.isEquipped = false;
     }
-    addAttribute() {
-        //TODO
-    }
     upgrade() {
         this.level += 1;
         this.damage += 1;
@@ -1306,6 +1372,56 @@ class HealthPotion extends Potion {
     }
 }
 
+class Scroll extends Item {
+    constructor(level, type, map) {
+        super(map);
+        this.icon = "s";
+        this.level = level;
+        this.type = type;
+        this.name = `${this.type} scroll`;
+    }
+    upgrade() {
+        return false;
+    }
+    display() {
+        let string = `${this.name}<br>LCLICK to use`;
+        $("#selectedItem").html(string);
+    }
+    use(player) {
+        this.castSpell(player);
+        player.dropItem(this.id);
+    }
+}
+
+class IceScroll extends Scroll {
+    constructor(level, map) {
+        super(level, "ice", map);
+    }
+    castSpell(player) {
+        $("#alerts").html("Cast a freezing ring of ice");
+        for (let neighbor of player.getNeighbors(this._map.tiles)) {
+            if (neighbor instanceof Enemy) {
+                neighbor.freeze(this.level);
+                player.game._attackingEnemy = null;
+            }
+        }
+    }
+}
+
+class FireScroll extends Scroll {
+    constructor(level, map) {
+        super(level, "fire", map);
+    }
+    castSpell(player) {
+        $("#alerts").html("Cast a blazing ring of fire");
+        for (let neighbor of player.getNeighbors(this._map.tiles)) {
+            if (neighbor instanceof Enemy) {
+                neighbor.burn(this.level);
+            }
+        }
+    }
+}
+
 class Enemy extends Entity {
     constructor(level, map, hp, atk, def) {
         super(null, null, getRandomString(UNICODE_CHARS));
@@ -1314,7 +1430,9 @@ class Enemy extends Entity {
         this.hp = hp;
         this.atk = atk;
         this.def = def;
-        this.name = `${getRandomString(ENEMY_ADJECTIVES)} ${getRandomString(ENEMY_NOUNS)}`
+        this.name = `${getRandomString(ENEMY_ADJECTIVES)} ${getRandomString(ENEMY_NOUNS)}`;
+        this.turnsToFreeze = 0;
+        this.turnsToBurn = 0;
     }
     takeDamage(opp) {
         let damageToTake = Math.ceil(opp.atk);
@@ -1325,6 +1443,17 @@ class Enemy extends Entity {
         return damageToTake;
     }
     move(dest) {
+        if (this.turnsToFreeze > 0) {
+            this.turnsToFreeze -= 1;
+            return;
+        }
+        if (this.turnsToBurn > 0) {
+            this.turnsToBurn -= 1;
+            this.hp -= 1;
+            if ($("#alerts").html() === "") {
+                $("#alerts").append(`${this.name} took 1 fire damage, remaining ${this.hp}<br>`);
+            }
+        }
         let path = this._aStar(dest);
         if (path && path.length > 1) {
             this.x = path[1].x;
@@ -1384,6 +1513,12 @@ class Enemy extends Entity {
             }
         }
         return null;
+    }
+    freeze(level) {
+        this.turnsToFreeze = logTransformation(level) + 4;
+    }
+    burn(level) {
+        this.turnsToBurn = logTransformation(level) + 4;
     }
 }
 
@@ -1650,26 +1785,37 @@ class World extends Graph {
         while (itemsAdded < this._numItems) {
             let randomMap = this.getRandomVertex();
             let material;
-            if (Math.random() < 0.333) {
+            let rand = Math.random();
+            if (rand < 0.25) {
                 material = this.generateMaterial(WEAPON_TYPES);
                 let weapon = new Weapon(randomMap, material);
                 if (randomMap.addItem(weapon) === true) {
                     itemsAdded += 1
                 }
-            } else if (Math.random() > 0.666) {
+            } else if (rand < 0.5) {
                 material = this.generateMaterial(ARMOR_TYPES);
                 let armor = new Armor(randomMap, material);
                 if (randomMap.addItem(armor) === true) {
                     itemsAdded += 1
                 }
-            } else {
+            } else if (rand < 0.75) {
                 let potion;
                 if (getRandomNumber(0, 1) === 0) {
                     potion = new StrengthPotion(this.weirdness, randomMap);
                 } else {
                     potion = new HealthPotion(this.weirdness, randomMap);
                 }
-                if (randomMap.addItem(potion) === true) {
+                if (randomMap.addItem(potion)) {
+                    itemsAdded += 1
+                }
+            } else {
+                let scroll;
+                if (getRandomNumber(0, 1) === 0) {
+                    scroll = new IceScroll(this.weirdness, randomMap);
+                } else {
+                    scroll = new FireScroll(this.weirdness, randomMap);
+                }
+                if (randomMap.addItem(scroll)) {
                     itemsAdded += 1
                 }
             }
@@ -2193,7 +2339,7 @@ function inventoryStressTest() {
             if (inventory.insert(randomItem)) {
                 numInserted++;
             }
-        // if removing item
+            // if removing item
         } else {
             let randomID = getRandomNumber(0, 8);
             if (inventory.remove(randomID)) {
