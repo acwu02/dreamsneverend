@@ -704,6 +704,7 @@ class InventoryMenu extends Menu {
         let item = this._player.inventory.contents[id];
         if (item) { // TODO clean up
             item.use(this._player);
+            $("#selectedItem").html("");
             this.open();
         }
     }
