@@ -1080,7 +1080,7 @@ class Player extends Entity {
         this.baseAtk = PLAYER_ATK_START;
         this.baseDef = PLAYER_DEF_START;
         this.exp = 0;
-        this.gold = 100;
+        this.gold = 0;
         this.def = 1;
 
         this.melatoninFound = 0;
@@ -1442,16 +1442,16 @@ class Enemy extends Entity {
         return damageToTake;
     }
     move(dest) {
-        if (this.turnsToFreeze > 0) {
-            this.turnsToFreeze -= 1;
-            return;
-        }
         if (this.turnsToBurn > 0) {
             this.turnsToBurn -= 1;
             this.hp -= 1;
             if ($("#alerts").html() === "") {
                 $("#alerts").append(`${this.name} took 1 fire damage, remaining ${this.hp}<br>`);
             }
+        }
+        if (this.turnsToFreeze > 0) {
+            this.turnsToFreeze -= 1;
+            return;
         }
         let path = this._aStar(dest);
         if (path && path.length > 1) {
@@ -1526,7 +1526,7 @@ class WhiteRabbit extends Entity {
         super(null, null, "r");
         this.map = map;
         this.life = 0;
-        this.lifespan = 150;
+        this.lifespan = 15;
     }
     move() {
         if (getRandomNumber(1, 2) === 1) {
