@@ -374,7 +374,7 @@ class Game {
         } else {
             numMelatonin = logTransformation(this.weirdness) + 1;
             numItems = Math.abs(Math.ceil(0.67 * logTransformation(this.weirdness) - 1));
-            numEnemies = logTransformation(this.weirdness) + 1;
+            numEnemies = logTransformation(this.weirdness) + 3;
         }
         this._world = new World(worldSize, numMelatonin, numItems, numEnemies, this.weirdness);
         this._player.melatoninFound = 0;
