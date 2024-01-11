@@ -1398,7 +1398,7 @@ class IceScroll extends Scroll {
     }
     castSpell(player) {
         $("#alerts").html("Cast a freezing ring of ice");
-        for (let neighbor of player.getNeighbors(this._map.tiles)) {
+        for (let neighbor of player.getNeighbors(this.player.map.tiles)) {
             if (neighbor instanceof Enemy) {
                 neighbor.freeze(this.level);
                 player.game._attackingEnemy = null;
@@ -1413,7 +1413,7 @@ class FireScroll extends Scroll {
     }
     castSpell(player) {
         $("#alerts").html("Cast a blazing ring of fire");
-        for (let neighbor of player.getNeighbors(this._map.tiles)) {
+        for (let neighbor of player.getNeighbors(this.player.map.tiles)) {
             if (neighbor instanceof Enemy) {
                 neighbor.burn(this.level);
             }
