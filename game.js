@@ -374,7 +374,7 @@ class Game {
         } else {
             numMelatonin = logTransformation(this.weirdness) + 1;
             numItems = Math.abs(Math.ceil(0.67 * logTransformation(this.weirdness) - 1));
-            numEnemies = logTransformation(this.weirdness) + 3;
+            numEnemies = logTransformation(this.weirdness) + 1;
         }
         this._world = new World(worldSize, numMelatonin, numItems, numEnemies, this.weirdness);
         this._player.melatoninFound = 0;
@@ -396,41 +396,40 @@ class Game {
             this._currMap.moveRabbit();
             let neighbors = this._player.getNeighbors(this._currMap.tiles)
             for (let neighbor of neighbors) {
-                if (neighbor instanceof Enemy) {
-                    if (neighbor.turnsToFreeze === 0) {
-                        if (!this._attackingEnemy) {
-                            this.alertMessage("Press SPACEBAR to attack");
-                        }
-                        this._attackingEnemy = neighbor;
-                        document.addEventListener("keydown", this._attack);
-                    }
+                if (neighbor instanceof Enemy && !this._attackingEnemy) {
+                    this.alertMessage("Press SPACEBAR to attack");
+                    this._attackingEnemy = neighbor;
+                    document.addEventListener("keydown", this._attack);
                 }
             }
-            if (this._player.buffTurnsRemaining > 0) {
-                this._player.decrementBuff();
-                if (this._player.buffTurnsRemaining === 0) {
-                    this.alertMessage("Strength ran out");
-                    this._player.runOutOfStrength();
-                }
+        }
+        if (this._player.buffTurnsRemaining > 0) {
+            this._player.decrementBuff();
+            if (this._player.buffTurnsRemaining === 0) {
+                this.alertMessage("Strength ran out");
+                this._player.runOutOfStrength();
             }
+
         }
         this._drawMap();
     }
     _attack(event) {
-        let playerDamage = this._player.takeDamage(this._attackingEnemy);
-        this._playerHP.html(`HP: ${this._player.hp}`);
-        if (this._player.hp <= 0) {
-            this._gameOver();
-            return;
+        if (this._attackingEnemy.turnsToFreeze === 0) {
+            let playerDamage = this._player.takeDamage(this._attackingEnemy);
+            this._playerHP.html(`HP: ${this._player.hp}`);
+            if (this._player.hp <= 0) {
+                this._gameOver();
+                return;
+            }
+            $("#alerts").append(`Player took ${playerDamage} damage; remaining ${this._player.hp}`);
+        } else {
+            this._attackingEnemy.turnsToFreeze -= 1;
         }
-        // this._currMap.moveEnemies(this._player);
         if (this._attackingEnemy.hp <= 0) {
             this._enemyDie();
             return;
         }
-        // this._currMap.moveEnemies(this._player);
         // TODO replace?
-        let string = `Player took ${playerDamage} damage; remaining ${this._player.hp}`;
         if (event.code === 'Space') {
             if (this._attackingEnemy.turnsToBurn > 0) {
                 this._attackingEnemy.hp -= 1;
@@ -440,13 +439,12 @@ class Game {
                 $("#alerts").append(`${this._attackingEnemy.name} took 1 fire damage, remaining ${this._attackingEnemy.hp}<br>`);
             }
             let enemyDamage = this._attackingEnemy.takeDamage(this._player);
-            string = string.concat(`<br>${this._attackingEnemy.name} took ${enemyDamage} damage; remaining ${this._attackingEnemy.hp}`);
+            $("#alerts").append(`<br>${this._attackingEnemy.name} took ${enemyDamage} damage; remaining ${this._attackingEnemy.hp}`);
             if (this._attackingEnemy.hp <= 0) {
                 this._enemyDie();
                 return;
             }
         }
-        $("#alerts").append(`${string}<br>`);
     }
     _enemyDie() {
         let alertString = `${this._attackingEnemy.name} died<br>Gained 1 EXP`;
@@ -1401,6 +1399,7 @@ class IceScroll extends Scroll {
         for (let neighbor of player.getNeighbors(player.map.tiles)) {
             if (neighbor instanceof Enemy) {
                 neighbor.freeze(this.level);
+                player.game._attackingEnemy = null;
             }
         }
     }
