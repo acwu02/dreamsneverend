@@ -35,7 +35,7 @@ const SPECIAL_MAP = [
     ["*", "*", "*", "*", "*", "*", "*", "*", "*", "*", "*"],
 ];
 
-const PLAYER_HP_START = 50;
+const PLAYER_HP_START = 100;
 const PLAYER_ATK_START = 1;
 const PLAYER_DEF_START = 1;
 
