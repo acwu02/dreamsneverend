@@ -461,7 +461,6 @@ class Game {
         this._currMap.replaceTile(this._attackingEnemy);
         document.removeEventListener("keydown", this._attack);
         this._attackingEnemy = null;
-
     }
 
     _getMelatonin(x, y) {
@@ -2254,8 +2253,6 @@ function executeTest(test, numIterations) {
 // executeTest(upgradeStressTest, 1);
 // executeTest(marketStressTest, 1);
 
-/* END TESTS */
-
 /* World generation: */
 
 // Checking that world is connected
@@ -2371,5 +2368,5 @@ function upgradeStressTest() {
     }
 }
 
-
+/* END TESTS */
 
