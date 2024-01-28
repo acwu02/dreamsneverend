@@ -373,7 +373,7 @@ class Game {
             // TODO remove else condition
         } else {
             numMelatonin = logTransformation(this.weirdness) + 1;
-            numItems = Math.abs(Math.ceil(0.67 * logTransformation(this.weirdness) - 1));
+            numItems = Math.abs(Math.ceil(0.67 * logTransformation(this.weirdness) - 1)) + 3;
             numEnemies = logTransformation(this.weirdness) + 1;
         }
         this._world = new World(worldSize, numMelatonin, numItems, numEnemies, this.weirdness);
@@ -1725,7 +1725,7 @@ class World extends Graph {
         this.bedroom = bedroom;
         this.addVertex(bedroom);
         let forge;
-        if (getRandomNumber(1, 3) === 1) {
+        if (getRandomNumber(1, 1) === 1) {
             forge = new Forge(this.size + 1);
             this.forge = forge;
             this.addVertex(forge);
