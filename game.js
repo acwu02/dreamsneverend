@@ -35,7 +35,7 @@ const SPECIAL_MAP = [
     ["*", "*", "*", "*", "*", "*", "*", "*", "*", "*", "*"],
 ];
 
-const PLAYER_HP_START = 100;
+const PLAYER_HP_START = 50;
 const PLAYER_ATK_START = 1;
 const PLAYER_DEF_START = 1;
 
@@ -397,7 +397,7 @@ class Game {
             let neighbors = this._player.getNeighbors(this._currMap.tiles)
             for (let neighbor of neighbors) {
                 if (neighbor instanceof Enemy && !this._attackingEnemy) {
-                    this.alertMessage("Press SPACEBAR to attack");
+                    this.alertMessage("Press SPACEBAR to attack<br>");
                     this._attackingEnemy = neighbor;
                     document.addEventListener("keydown", this._attack);
                 }
@@ -406,7 +406,7 @@ class Game {
         if (this._player.buffTurnsRemaining > 0) {
             this._player.decrementBuff();
             if (this._player.buffTurnsRemaining === 0) {
-                this.alertMessage("Strength ran out");
+                this.alertMessage("Strength ran out<br>");
                 this._player.runOutOfStrength();
             }
 
@@ -421,7 +421,7 @@ class Game {
                 this._gameOver();
                 return;
             }
-            $("#alerts").append(`Player took ${playerDamage} damage; remaining ${this._player.hp}`);
+            $("#alerts").append(`Player took ${playerDamage} damage; remaining ${this._player.hp}<br>`);
         } else {
             this._attackingEnemy.turnsToFreeze -= 1;
         }
@@ -439,7 +439,7 @@ class Game {
                 $("#alerts").append(`${this._attackingEnemy.name} took 1 fire damage, remaining ${this._attackingEnemy.hp}<br>`);
             }
             let enemyDamage = this._attackingEnemy.takeDamage(this._player);
-            $("#alerts").append(`<br>${this._attackingEnemy.name} took ${enemyDamage} damage; remaining ${this._attackingEnemy.hp}`);
+            $("#alerts").append(`${this._attackingEnemy.name} took ${enemyDamage} damage; remaining ${this._attackingEnemy.hp}`);
             if (this._attackingEnemy.hp <= 0) {
                 this._enemyDie();
                 return;
@@ -800,6 +800,7 @@ class UpgradeMenu extends Menu {
             space.addEventListener("click", this.inventoryMenu.useItem);
             space.removeEventListener("click", this._completeUpgradeItem);
         }
+        document.removeEventListener("keydown", this._cancelUpgrade);
     }
 
     _completeUpgradeItem(event) {
@@ -1268,7 +1269,7 @@ class Melatonin extends Item {
         this._map.replaceTile(this);
         player.melatoninFound += 1;
         player.game.inventoryMenu.updateMelatonin(); // TODO placeholder, define what injections I want in player class
-        player.game.alertMessage(`Found ${player.melatoninFound} out of ${player.totalMelatonin} total melatonin`);
+        player.game.alertMessage(`Found ${player.melatoninFound} out of ${player.totalMelatonin} total melatonin<br>`);
     }
 }
 
@@ -1400,6 +1401,7 @@ class IceScroll extends Scroll {
             if (neighbor instanceof Enemy) {
                 neighbor.freeze(this.level);
                 player.game._attackingEnemy = null;
+                document.removeEventListener("keydown", player.game._attack);
             }
         }
     }
