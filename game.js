@@ -1078,7 +1078,7 @@ class Player extends Entity {
         this.hp = PLAYER_HP_START;
         this.baseAtk = PLAYER_ATK_START;
         this.baseDef = PLAYER_DEF_START;
-        this.exp = 0;
+        this.exp = 100;
         this.gold = 0;
         this.def = 1;
 
