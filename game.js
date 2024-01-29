@@ -481,7 +481,7 @@ class Game {
     }
     _goToSleep(event) {
         document.removeEventListener('keydown', this._goToSleep);
-        if (event.code === 'Space' || event.key === ' ' || event.keyCode === 32) {
+        if (event.code === 'Space') {
             if (this.weirdness > 0 && this._player.melatoninFound < this._player.totalMelatonin) {
                 let alertMessage = "You are not sleepy. Find melatonin to go to sleep";
                 this._alerts.html(alertMessage);
