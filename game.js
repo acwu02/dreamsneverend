@@ -1,3 +1,5 @@
+// TODO: clear selected item upon death
+
 const MAP_WIDTH = 20;
 const MAP_HEIGHT = 20;
 
@@ -45,14 +47,20 @@ const ENEMY_HP_START = 4;
 const ENEMY_ATK_START = 0;
 const ENEMY_DEF_START = 1;
 
-const HEALTH_POTION_START = 10;
+const HEALTH_POTION_START = 15;
 
 const RARITY_BOUND = 0.1;
 
 const DEF_CONST = 0.25;
 
-const START_UPGRADE_COST = 1;
+const START_UPGRADE_COST = 2;
 const START_MARKET_COST = 3;
+
+const HP_INCREMENT = 25;
+
+const BURN_DAMAGE = 2;
+
+const EFFECT_NUM_TURNS = 5;
 
 const WEAPON_TYPES = {
     "wood": {
@@ -292,11 +300,6 @@ function logTransformation(x) {
 
 class Game {
     constructor() {
-        this._player = new Player(this);
-        this.inventoryMenu = new InventoryMenu(this._player, this.alertMessage);
-        this._upgradeMenu = new UpgradeMenu(this._player, this.alertMessage, this.inventoryMenu);
-        this._marketMenu = new MarketMenu(this._player, this.alertMessage, this.inventoryMenu);
-
         this._title = $("#title");
         this._game = $("#game");
         this._playButton = $("#playButton");
@@ -333,8 +336,6 @@ class Game {
 
         this._world = null;
 
-        this.weirdness = -1;
-
         this._door = null;
         this._currMap = null;
 
@@ -348,15 +349,27 @@ class Game {
         });
     }
     _loadGame() {
+        this._player = new Player(this);
+        this.inventoryMenu = new InventoryMenu(this._player, this.alertMessage);
+        this._upgradeMenu = new UpgradeMenu(this._player, this.alertMessage, this.inventoryMenu);
+        this._marketMenu = new MarketMenu(this._player, this.alertMessage, this.inventoryMenu);
+        this.weirdness = -1;
+        this._attackingEnemy = null;
+        this._loadHTML();
+        this.inventoryMenu.updateMelatonin();
+        this.inventoryMenu.open();
+        this._createWorld();
+    }
+    _loadHTML() {
         this._inventory.removeClass("hidden2");
         this._inventoryButton.removeClass("hidden");
         this._playerHP.html(`HP: ${this._player.hp}`);
         this._playerEXP.html(`EXP: ${this._player.exp}`);
         $("#gold").html(`Gold: ${this._player.gold}`);
         this._equippedWeapon.html(`Weapon: none`);
-        this._equippedArmor.html(`Armor: none`)
-        this._createWorld();
+        this._equippedArmor.html(`Armor: none`);
     }
+
     _createWorld() {
         this.weirdness += 1;
         this._level.html(`Level: ${this.weirdness}`);
@@ -373,7 +386,7 @@ class Game {
             // TODO remove else condition
         } else {
             numMelatonin = logTransformation(this.weirdness) + 1;
-            numItems = Math.abs(Math.ceil(0.67 * logTransformation(this.weirdness) - 1)) + 3;
+            numItems = Math.abs(Math.ceil(0.67 * logTransformation(this.weirdness) - 1));
             numEnemies = logTransformation(this.weirdness) + 1;
         }
         this._world = new World(worldSize, numMelatonin, numItems, numEnemies, this.weirdness);
@@ -384,6 +397,9 @@ class Game {
         this._game.fadeIn("slow");
     }
     _playerMove(event) {
+        if (event.code !== 'ArrowLeft' && event.code !== 'ArrowRight'
+            && event.code !== 'ArrowUp' && event.code !== 'ArrowDown'
+            && event.code !== 'Space') return;
         $("#alerts").html("");
         event.preventDefault();
         if (this._keyCodes.hasOwnProperty(event.code)) {
@@ -414,6 +430,9 @@ class Game {
         this._drawMap();
     }
     _attack(event) {
+        if (event.code !== 'ArrowLeft' && event.code !== 'ArrowRight'
+            && event.code !== 'ArrowUp' && event.code !== 'ArrowDown'
+            && event.code !== 'Space') return;
         if (this._attackingEnemy.turnsToFreeze === 0) {
             let playerDamage = this._player.takeDamage(this._attackingEnemy);
             this._playerHP.html(`HP: ${this._player.hp}`);
@@ -432,11 +451,11 @@ class Game {
         // TODO replace?
         if (event.code === 'Space') {
             if (this._attackingEnemy.turnsToBurn > 0) {
-                this._attackingEnemy.hp -= 1;
+                this._attackingEnemy.hp -= BURN_DAMAGE;
                 if (this._attackingEnemy.hp <= 0) {
                     this._enemyDie();
                 }
-                $("#alerts").append(`${this._attackingEnemy.name} took 1 fire damage, remaining ${this._attackingEnemy.hp}<br>`);
+                $("#alerts").append(`${this._attackingEnemy.name} took ${BURN_DAMAGE} fire damage, remaining ${this._attackingEnemy.hp}<br>`);
             }
             let enemyDamage = this._attackingEnemy.takeDamage(this._player);
             $("#alerts").append(`${this._attackingEnemy.name} took ${enemyDamage} damage; remaining ${this._attackingEnemy.hp}`);
@@ -449,7 +468,7 @@ class Game {
     _enemyDie() {
         let alertString = `${this._attackingEnemy.name} died<br>Gained 1 EXP`;
         this._player.exp += 1;
-        if (getRandomNumber(1, 4) === 1) { // todo clean up
+        if (getRandomNumber(1, 2) === 1) { // todo clean up
             alertString = alertString.concat(" and 1 gold");
             this._player.gold += 1;
         }
@@ -481,19 +500,15 @@ class Game {
     }
     _goToSleep(event) {
         document.removeEventListener('keydown', this._goToSleep);
-        if (event.code === 'Space') {
+        if (event.code === 'Space'  && this._currMap instanceof Bedroom) {
             if (this.weirdness > 0 && this._player.melatoninFound < this._player.totalMelatonin) {
                 let alertMessage = "You are not sleepy. Find melatonin to go to sleep";
                 this._alerts.html(alertMessage);
                 return;
             }
-            document.removeEventListener('keydown', this._goToSleep);
             this._map.fadeOut("slow").promise().done(() => {
-                this._player.restoreHP();
+                this._player.restoreHP(this.weirdness);
                 this._player.inventory.clearMelatonin();
-                if (this.isInventoryOpen === true) {
-                    this.drawInventory();
-                }
                 this._alerts.html("");
                 this._createWorld();
                 this._melatonin.html(`Melatonin found: ${this._player.melatoninFound}/${this._player.totalMelatonin}`);
@@ -507,6 +522,7 @@ class Game {
         }
     }
     openDoor(x, y) {
+        $("#alerts").html("");
         this._door = this._currMap.getTile(x, y);
         this.alertMessage("Press SPACE to open door");
         document.addEventListener("keydown", this._tryOpenDoor);
@@ -565,6 +581,9 @@ class Game {
         }
         this._attackingEnemy = null;
         let highScore = this._setHighScore(this.weirdness);
+        this._player.icon = "X";
+        this._currMap.updateTile(this._player);
+        this._drawMap();
         $("#alerts").html(`You died<br>High score: ${highScore}`);
         $("#newGame").removeClass("hidden2");
         $("#newGame").on("click", this._resetGame);
@@ -587,39 +606,37 @@ class Game {
 
     _resetGame() {
         this._game.fadeOut("slow").promise().done(() => {
-            $("#newGame").addClass("hidden2");
-            let children = this._inventorySpaces.children();
-            children.each(function (index, child) {
-                $(child).removeClass("selected");
-            });
-            $("#alerts").html("");
-
-            // TODO clean up
-            this._player = new Player(this);
-            for (let space of $("#inventorySpaces").children()) {
-                space.removeEventListener("click", this.inventoryMenu.useItem);
-            }
-            for (let i = 0; i < 9; i++) {
-                let space = $(`#space${i}`);
-                space.off("mouseenter", this.inventoryMenu._displayItem);
-                space.off("mouseleave", this.inventoryMenu._removeItem);
-            }
-            this.inventoryMenu = new InventoryMenu(this._player, this.alertMessage);
-            this._upgradeMenu = new UpgradeMenu(this._player, this.alertMessage, this.inventoryMenu);
-            this._marketMenu = new MarketMenu(this._player, this.alertMessage, this.inventoryMenu);
-            this.inventoryMenu.updateMelatonin();
-            this.inventoryMenu.open();
-            this.weirdness = -1;
-            this._attackingEnemy = null;
+            this._removeDOM();
+            this._removeEventListeners();
             this._loadGame();
-            document.addEventListener("keydown", this._playerMove);
-            for (let key of Object.keys(this._player.inventory.contents)) {
-                this._player.inventory.remove(key);
-            }
+            // this.inventoryMenu.updateMelatonin();
+            // this.inventoryMenu.open();
         });
     }
-    _removeEventListeners() {
+    _removeDOM() {
+        $("#newGame").addClass("hidden2");
+        this._inventorySpaces.children().each(function (index, child) {
+            $(child).removeClass("selected");
+            $(child).html(".");
+        });
+        $("#alerts").html("");
+    }
 
+    _removeEventListeners() {
+        for (let space of $("#inventorySpaces").children()) {
+            space.removeEventListener("click", this.inventoryMenu.useItem);
+        }
+        for (let i = 0; i < 9; i++) {
+            let space = $(`#space${i}`);
+            space.off("mouseenter", this.inventoryMenu._displayItem);
+            space.off("mouseleave", this.inventoryMenu._removeItem);
+        }
+        $("#upgradeMenu").children().each(function (index, child) {
+            $(child).off("click");
+        })
+        $("#marketMenu").children().each(function (index, child) {
+            $(child).off("click");
+        })
     }
 
     tryUpgrade(anvil) {
@@ -757,16 +774,9 @@ class UpgradeMenu extends Menu {
         $("#upgradeMenu").addClass("hidden2");
         document.removeEventListener("keydown", this._closeUpgradeMenu);
     }
-    // _restoreHP() {
-    //     this._player.hp = this._player.maxHP;
-    //     this._updateHP();
-    //     this.alertMessage("HP restored");
-    //     this._player.exp -= this._upgrade1Cost;
-    //     this._updateEXP();
-    //     this._upgrade1Cost *= 2;
-    //     this._closeUpgradeMenu();
-    //     this._anvil = null;
-    // }
+    _incrementCost(upgradeSlot) {
+        upgradeSlot += 1;
+    }
     _upgradeMaxHP() {
         if (this._player.exp < this._upgrade1Cost) {
             this.alertMessage("Not enough EXP");
@@ -776,7 +786,7 @@ class UpgradeMenu extends Menu {
         $("#alerts").html(`Player HP upgraded to ${this._player.maxHP}`);
         this._player.exp -= this._upgrade1Cost;
         this._updateEXP();
-        this._upgrade1Cost += 1;
+        this._incrementCost(this._upgrade1Cost);
         this._closeUpgradeMenu();
         this._anvil = null;
     }
@@ -807,11 +817,11 @@ class UpgradeMenu extends Menu {
         let id = event.target.id[5];
         let item = this._player.inventory.contents[id];
         if (item) {
-            if (!item.upgrade()) {
+            if (item.upgrade()) {
                 this.alertMessage(`${item.name} upgraded`);
                 this._player.exp -= this._upgrade2Cost;
                 this._updateEXP();
-                this._upgrade2Cost += 1;
+                this._incrementCost(this._upgrade2Cost);
             } else {
                 this.alertMessage("Cannot upgrade item");
             }
@@ -843,10 +853,14 @@ class MarketMenu extends Menu {
         $("#market2").click(this._buyStrengthPotion);
         $("#market3").click(this._buyFireScroll);
         $("#market4").click(this._buyIceScroll);
+        $("#market5").click(this._buySword);
+        $("#market6").click(this._buyArmor);
         this._market1Cost = START_MARKET_COST;
         this._market2Cost = START_MARKET_COST;
         this._market3Cost = START_MARKET_COST;
         this._market4Cost = START_MARKET_COST;
+        this._market5Cost = START_MARKET_COST;
+        this._market6Cost = START_MARKET_COST;
         this.inventoryMenu = inventoryMenu;
     }
     open(event) {
@@ -863,6 +877,8 @@ class MarketMenu extends Menu {
         $("#market2").html(`Buy Strength Potion<br>${this._market2Cost} Gold`);
         $("#market3").html(`Buy Fire Scroll<br>${this._market3Cost} Gold`);
         $("#market4").html(`Buy Ice Scroll<br>${this._market4Cost} Gold`);
+        $("#market5").html(`Buy Sword<br>${this._market5Cost} Gold`);
+        $("#market6").html(`Buy Armor<br>${this._market6Cost} Gold`);
         document.addEventListener("keydown", this.close);
     }
 
@@ -927,18 +943,27 @@ class MarketMenu extends Menu {
         document.removeEventListener("keydown", this._cancelSell);
     }
 
+    _incrementCost(marketSlot) {
+        // return;
+        marketSlot += 1;
+    }
+
+    _givePlayerItem(item, cost) {
+        if (!this._player.inventory.insert(item)) {
+            $("#alerts").html("Inventory full");
+            return;
+        }
+        this.inventoryMenu.open();
+        this._player.removeGold(cost);
+        this._incrementCost(cost);
+        this._openMenu();
+        $("#alerts").html(`Bought ${item.name}`);
+    }
+
     _buyHealthPotion() {
         if (this._player.gold >= this._market1Cost) {
             let healthPotion = new HealthPotion(this._player.game.weirdness, undefined);
-            if (!this._player.inventory.insert(healthPotion)) {
-                $("#alerts").html("Inventory full");
-                return;
-            }
-            this.inventoryMenu.open();
-            this._player.removeGold(this._market1Cost);
-            this._market1Cost += 1;
-            this._openMenu();
-            $("#alerts").html("Bought health potion");
+            this._givePlayerItem(healthPotion. this._market1Cost);
         } else {
             $("#alerts").html("Not enough gold");
         }
@@ -947,15 +972,7 @@ class MarketMenu extends Menu {
     _buyStrengthPotion() {
         if (this._player.gold >= this._market2Cost) {
             let strengthPotion = new StrengthPotion(this._player.game.weirdness, undefined);
-            if (!this._player.inventory.insert(strengthPotion)) {
-                $("#alerts").html("Inventory full");
-                return;
-            }
-            this.inventoryMenu.open();
-            this._player.removeGold(this._market2Cost);
-            this._market2Cost += 1;
-            this._openMenu();
-            $("#alerts").html("Bought strength potion");
+            this._givePlayerItem(strengthPotion, this._market2Cost);
         } else {
             $("#alerts").html("Not enough gold");
         }
@@ -964,15 +981,7 @@ class MarketMenu extends Menu {
     _buyFireScroll() {
         if (this._player.gold >= this._market3Cost) {
             let fireScroll = new FireScroll(this._player.game.weirdness, this._player.map);
-            if (!this._player.inventory.insert(fireScroll)) {
-                $("#alerts").html("Inventory full");
-                return;
-            }
-            this.inventoryMenu.open();
-            this._player.removeGold(this._market3Cost);
-            this._market3Cost += 1;
-            this._openMenu();
-            $("#alerts").html("Bought fire scroll");
+            this._givePlayerItem(fireScroll, this._market3Cost);
         } else {
             $("#alerts").html("Not enough gold");
         }
@@ -981,15 +990,27 @@ class MarketMenu extends Menu {
     _buyIceScroll() {
         if (this._player.gold >= this._market4Cost) {
             let iceScroll = new IceScroll(this._player.game.weirdness, this._player.map);
-            if (!this._player.inventory.insert(iceScroll)) {
-                $("#alerts").html("Inventory full");
-                return;
-            }
-            this.inventoryMenu.open();
-            this._player.removeGold(this._market4Cost);
-            this._market4Cost += 1;
-            this._openMenu();
-            $("#alerts").html("Bought ice scroll potion");
+            this._givePlayerItem(iceScroll, this._market4Cost);
+        } else {
+            $("#alerts").html("Not enough gold");
+        }
+    }
+    _buySword() {
+        if (this._player.gold >= this._market5Cost) {
+            let playerLvl = this._player.game.weirdness;
+            let swordLvl = playerLvl - 2 ? playerLvl > 2 : 1
+            let sword = new Weapon(swordLvl, this._player.map);
+            this._givePlayerItem(sword, this._market5Cost);
+        } else {
+            $("#alerts").html("Not enough gold");
+        }
+    }
+    _buyArmor() {
+        if (this._player.gold >= this._market5Cost) {
+            let playerLvl = this._player.game.weirdness;
+            let armorLvl = playerLvl - 2 ? playerLvl > 2 : 1
+            let armor = new Armor(armorLvl, this._player.map);
+            this._givePlayerItem(armor, this._market5Cost);
         } else {
             $("#alerts").html("Not enough gold");
         }
@@ -1066,7 +1087,7 @@ class Entity extends Tile {
 
 class Player extends Entity {
     constructor(game) {
-        super(PLAYER_START.x, PLAYER_START.y, "X", PLAYER_HP_START, PLAYER_ATK_START, PLAYER_DEF_START);
+        super(PLAYER_START.x, PLAYER_START.y, "P", PLAYER_HP_START, PLAYER_ATK_START, PLAYER_DEF_START);
         this.game = game;
         this.inventory = new Inventory(this.game.inventoryMenu);
         this.oldPos = [-1, -1];
@@ -1078,7 +1099,7 @@ class Player extends Entity {
         this.hp = PLAYER_HP_START;
         this.baseAtk = PLAYER_ATK_START;
         this.baseDef = PLAYER_DEF_START;
-        this.exp = 100;
+        this.exp = 0;
         this.gold = 0;
         this.def = 1;
 
@@ -1125,8 +1146,16 @@ class Player extends Entity {
     sleep() {
         this.game.sleep();
     }
-    restoreHP() {
-        this.hp = this.maxHP;
+    restoreHP(toAdd) {
+        //this.hp = this.maxHP;
+        let hpToAdd = HP_INCREMENT + toAdd;
+        if (this.hp < this.maxHP) {
+            if (this.maxHP - this.hp <= hpToAdd) {
+                this.hp = this.maxHP;
+            } else {
+                this.hp += hpToAdd;
+            }
+        }
         $("#hp").html(`HP: ${this.hp}`);
     }
     upgrade() {
@@ -1247,7 +1276,7 @@ class Item extends Tile {
         this._attribs = [];
     }
     _pickUpAlert(player) {
-        player.game.alertMessage(`Found ${this.name}`);
+        player.game.alertMessage(`Found ${this.name}<br>`);
     }
     interact(player) {
         if (player.pickUpItem(this)) {
@@ -1285,6 +1314,7 @@ class Weapon extends Item {
     upgrade() {
         this.level += 1;
         this.damage += 1;
+        return true;
     }
     display() {
         let string = `${this.name}<br>`;
@@ -1311,6 +1341,7 @@ class Armor extends Item {
     }
     upgrade() {
         this.protection += 1;
+        return true;
     }
     display() {
         let string = `${this.name}<br>`;
@@ -1514,10 +1545,10 @@ class Enemy extends Entity {
         return null;
     }
     freeze(level) {
-        this.turnsToFreeze = logTransformation(level) + 4;
+        this.turnsToFreeze = logTransformation(level) + EFFECT_NUM_TURNS;
     }
     burn(level) {
-        this.turnsToBurn = logTransformation(level) + 4;
+        this.turnsToBurn = logTransformation(level) + EFFECT_NUM_TURNS;
     }
 }
 
@@ -1725,7 +1756,7 @@ class World extends Graph {
         this.bedroom = bedroom;
         this.addVertex(bedroom);
         let forge;
-        if (getRandomNumber(1, 1) === 1) {
+        if (getRandomNumber(1, 3) === 1) {
             forge = new Forge(this.size + 1);
             this.forge = forge;
             this.addVertex(forge);
@@ -1850,6 +1881,8 @@ class World extends Graph {
             let randomMap = this.getRandomVertex();
             let hp = gaussian(this.weirdness + ENEMY_HP_START);
             let atk = gaussian(this.weirdness + ENEMY_ATK_START);
+            hp === 1 ? hp = hp : hp -= 2;
+            atk === 1 ? atk = atk : atk -= 2;
             let enemy = new Enemy(this.weirdness, randomMap, hp, atk);
             if (randomMap.addItem(enemy) === true) {
                 enemiesAdded += 1;

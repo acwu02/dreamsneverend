@@ -4,6 +4,7 @@ body {
     flex-direction: column;
     height: 100%;
     margin: 0px;
+    user-select: none;
 }
 
 h3, h4 {
