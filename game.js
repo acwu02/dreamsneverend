@@ -847,6 +847,8 @@ class MarketMenu extends Menu {
         this._buyStrengthPotion = this._buyStrengthPotion.bind(this);
         this._buyFireScroll = this._buyFireScroll.bind(this);
         this._buyIceScroll = this._buyIceScroll.bind(this);
+        this._buySword = this._buySword.bind(this);
+        this._buyArmor = this._buyArmor.bind(this);
         this._cancelSell = this._cancelSell.bind(this);
         $("#sell").click(this._sellItem);
         $("#market1").click(this._buyHealthPotion);
@@ -859,8 +861,8 @@ class MarketMenu extends Menu {
         this._market2Cost = START_MARKET_COST;
         this._market3Cost = START_MARKET_COST;
         this._market4Cost = START_MARKET_COST;
-        this._market5Cost = START_MARKET_COST;
-        this._market6Cost = START_MARKET_COST;
+        this._market5Cost = START_MARKET_COST + 2;
+        this._market6Cost = START_MARKET_COST + 2;
         this.inventoryMenu = inventoryMenu;
     }
     open(event) {
@@ -995,11 +997,15 @@ class MarketMenu extends Menu {
             $("#alerts").html("Not enough gold");
         }
     }
+    _generateMaterial(world, types) {
+        return world.generateMaterial(types);
+    }
     _buySword() {
         if (this._player.gold >= this._market5Cost) {
             let playerLvl = this._player.game.weirdness;
-            let swordLvl = playerLvl - 2 ? playerLvl > 2 : 1
-            let sword = new Weapon(swordLvl, this._player.map);
+            // let swordLvl = playerLvl - 2 ? playerLvl > 2 : 1
+            // let material = this._generateMaterial(this._player.game._world, WEAPON_TYPES);
+            let sword = new Weapon(1, WEAPON_TYPES.wood);
             this._givePlayerItem(sword, this._market5Cost);
         } else {
             $("#alerts").html("Not enough gold");
@@ -1008,8 +1014,9 @@ class MarketMenu extends Menu {
     _buyArmor() {
         if (this._player.gold >= this._market5Cost) {
             let playerLvl = this._player.game.weirdness;
-            let armorLvl = playerLvl - 2 ? playerLvl > 2 : 1
-            let armor = new Armor(armorLvl, this._player.map);
+            // let armorLvl = playerLvl - 2 ? playerLvl > 2 : 1
+            // let material = this._generateMaterial(this._player.game._world, ARMOR_TYPES);
+            let armor = new Armor(1, ARMOR_TYPES.leather);
             this._givePlayerItem(armor, this._market5Cost);
         } else {
             $("#alerts").html("Not enough gold");
