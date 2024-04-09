@@ -1557,7 +1557,7 @@ class WhiteRabbit extends Entity {
         super(null, null, "r");
         this.map = map;
         this.life = 0;
-        this.lifespan = 15;
+        this.lifespan = 150;
     }
     move() {
         if (getRandomNumber(1, 2) === 1) {
