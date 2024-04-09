@@ -1100,7 +1100,7 @@ class Player extends Entity {
         this.baseAtk = PLAYER_ATK_START;
         this.baseDef = PLAYER_DEF_START;
         this.exp = 0;
-        this.gold = 0;
+        this.gold = 100;
         this.def = 1;
 
         this.melatoninFound = 0;
@@ -1756,7 +1756,7 @@ class World extends Graph {
         this.bedroom = bedroom;
         this.addVertex(bedroom);
         let forge;
-        if (getRandomNumber(1, 3) === 1) {
+        if (getRandomNumber(1, 1) === 1) {
             forge = new Forge(this.size + 1);
             this.forge = forge;
             this.addVertex(forge);
