@@ -53,7 +53,7 @@ const RARITY_BOUND = 0.1;
 
 const DEF_CONST = 0.25;
 
-const START_UPGRADE_COST = 2;
+const START_UPGRADE_COST = 3;
 const START_MARKET_COST = 3;
 
 const HP_INCREMENT = 25;
@@ -879,7 +879,7 @@ class MarketMenu extends Menu {
         $("#market2").html(`Buy Strength Potion<br>${this._market2Cost} Gold`);
         $("#market3").html(`Buy Fire Scroll<br>${this._market3Cost} Gold`);
         $("#market4").html(`Buy Ice Scroll<br>${this._market4Cost} Gold`);
-        $("#market5").html(`Buy Sword<br>${this._market5Cost} Gold`);
+        $("#market5").html(`Buy Weapon<br>${this._market5Cost} Gold`);
         $("#market6").html(`Buy Armor<br>${this._market6Cost} Gold`);
         document.addEventListener("keydown", this.close);
     }
@@ -1002,9 +1002,6 @@ class MarketMenu extends Menu {
     }
     _buySword() {
         if (this._player.gold >= this._market5Cost) {
-            let playerLvl = this._player.game.weirdness;
-            // let swordLvl = playerLvl - 2 ? playerLvl > 2 : 1
-            // let material = this._generateMaterial(this._player.game._world, WEAPON_TYPES);
             let sword = new Weapon(1, WEAPON_TYPES.wood);
             this._givePlayerItem(sword, this._market5Cost);
         } else {
@@ -1107,7 +1104,7 @@ class Player extends Entity {
         this.baseAtk = PLAYER_ATK_START;
         this.baseDef = PLAYER_DEF_START;
         this.exp = 0;
-        this.gold = 100;
+        this.gold = 0;
         this.def = 1;
 
         this.melatoninFound = 0;
@@ -1564,7 +1561,7 @@ class WhiteRabbit extends Entity {
         super(null, null, "r");
         this.map = map;
         this.life = 0;
-        this.lifespan = 150;
+        this.lifespan = 15;
     }
     move() {
         if (getRandomNumber(1, 2) === 1) {
@@ -1763,7 +1760,7 @@ class World extends Graph {
         this.bedroom = bedroom;
         this.addVertex(bedroom);
         let forge;
-        if (getRandomNumber(1, 1) === 1) {
+        if (getRandomNumber(1, 3) === 1) {
             forge = new Forge(this.size + 1);
             this.forge = forge;
             this.addVertex(forge);
@@ -1888,8 +1885,8 @@ class World extends Graph {
             let randomMap = this.getRandomVertex();
             let hp = gaussian(this.weirdness + ENEMY_HP_START);
             let atk = gaussian(this.weirdness + ENEMY_ATK_START);
-            hp === 1 ? hp = hp : hp -= 2;
-            atk === 1 ? atk = atk : atk -= 2;
+            hp === hp <= 2 ? hp = hp : hp -= 1;
+            atk === atk <= 2 ? atk = atk : atk -= 1;
             let enemy = new Enemy(this.weirdness, randomMap, hp, atk);
             if (randomMap.addItem(enemy) === true) {
                 enemiesAdded += 1;
